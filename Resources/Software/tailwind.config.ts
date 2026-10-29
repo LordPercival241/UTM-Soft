@@ -21,16 +21,16 @@ const config: Config = {
           dim: "#64748B",
         },
         laser: {
-          DEFAULT: "#FF2E93",
-          dark: "#D01A72",
+          DEFAULT: "#ec0d79ff",
+          dark: "#91104eff",
           hover: "#FF4D9F",
           glow: "rgba(255, 46, 147, 0.25)",
         },
         cyber: {
-          cyan: "#00F0FF",
-          emerald: "#10B981",
-          amber: "#F59E0B",
-          rose: "#F43F5E",
+          cyan: "#157981ff",
+          emerald: "#64b910ff",
+          amber: "#e99d1bff",
+          rose: "#c62943ff",
         },
       },
       fontFamily: {

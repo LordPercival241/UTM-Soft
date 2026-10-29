@@ -102,6 +102,32 @@ const initialSetup = {
 
 type ChatMessage = { role: "user" | "assistant"; text: string; time: string };
 
+function FormattedMessage({ text }: { text: string }) {
+  const lines = text.split("\n");
+  return (
+    <div className="space-y-1">
+      {lines.map((line, i) => {
+        if (!line.trim()) return <div key={i} className="h-1.5" />;
+        const parts = line.split(/(\*\*[^*]+\*\*)/g);
+        return (
+          <p key={i} className="leading-relaxed">
+            {parts.map((part, pIdx) => {
+              if (part.startsWith("**") && part.endsWith("**")) {
+                return (
+                  <strong key={pIdx} className="text-white font-semibold">
+                    {part.slice(2, -2)}
+                  </strong>
+                );
+              }
+              return <span key={pIdx}>{part}</span>;
+            })}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const serial = useSerialTestSession();
@@ -121,7 +147,7 @@ export default function DashboardPage() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
-      text: "Aqui puedes consultarme como funciona la plataforma.",
+      text: "Hola, soy el asistente técnico de UTM Lab. Puedo orientarte sobre normas de ensayo (ASTM D638), interpretar la curva esfuerzo-deformación, calcular el módulo elástico o diagnosticar la telemetría en tiempo real.",
       time: "INIT",
     },
   ]);
@@ -231,23 +257,49 @@ export default function DashboardPage() {
     if (!text || chatLoading) return;
     setChatInput("");
     const now = new Date().toLocaleTimeString("es-PE", { hour12: false });
+
+    // Historial conversacional previo para contexto multi-turno (últimos 8 mensajes)
+    const history = chatMessages.slice(-8).map((m) => ({
+      role: m.role,
+      text: m.text,
+    }));
+
     setChatMessages((prev) => [...prev, { role: "user", text, time: now }]);
     setChatLoading(true);
 
     try {
       const sessionResult = await supabase?.auth.getSession();
       const token = sessionResult?.data.session?.access_token;
-      if (!token) throw new Error("Sesión no autenticada.");
+      if (!token) throw new Error("No hay una sesión activa de operador. Inicie sesión en la pantalla de bienvenida.");
 
       const response = await fetch("/api/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           message: text,
+          history,
           context: {
             screen: "dashboard",
             machineStatus: `${serial.status} | F_max: ${maxForce.toFixed(2)}N | Datapoints: ${serial.samples.length}`,
             lastMessage: serial.lastMessage,
+            specimen: {
+              id: setup.specimenId,
+              material: setup.material,
+              dimensions: `${setup.widthMm} x ${setup.thicknessMm} mm`,
+              gaugeLength: `${setup.gaugeLengthMm} mm`,
+              area: `${setup.areaMm2} mm²`,
+            },
+            telemetry: {
+              currentForceN: lastSample ? Number(lastSample.forceN.toFixed(2)) : 0,
+              maxForceN: Number(maxForce.toFixed(2)),
+              currentStressMpa: lastSample ? Number(lastSample.stressMpa.toFixed(3)) : 0,
+              maxStressMpa: Number(maxStress.toFixed(3)),
+              currentStrainPct: lastSample ? Number((lastSample.strain * 100).toFixed(2)) : 0,
+              maxStrainPct: Number((maxStrain * 100).toFixed(2)),
+              displacementMm: lastSample ? Number(lastSample.displacementMm.toFixed(3)) : 0,
+              datapoints: serial.samples.length,
+              droppedSamples: serial.droppedSamples,
+            },
           },
         }),
       });
@@ -801,6 +853,18 @@ export default function DashboardPage() {
               >
                 ZONA ELÁSTICA
               </button>
+              <button
+                onClick={() => submitAssistant("¿Cómo calculo el módulo de Young (E) con los datos adquiridos?")}
+                className="whitespace-nowrap px-2 py-0.5 bg-[#131720] hover:bg-slate-800 border border-[#1E2532] text-slate-300 rounded-sm"
+              >
+                MÓDULO YOUNG
+              </button>
+              <button
+                onClick={() => submitAssistant("Explica cómo conectar el microcontrolador y diagnosticar el puerto COM.")}
+                className="whitespace-nowrap px-2 py-0.5 bg-[#131720] hover:bg-slate-800 border border-[#1E2532] text-slate-300 rounded-sm"
+              >
+                ENLACE SERIAL
+              </button>
             </div>
 
             {/* Ventana de mensajes de terminal */}
@@ -822,7 +886,9 @@ export default function DashboardPage() {
                     </span>
                     <span>{msg.time}</span>
                   </div>
-                  <p className="whitespace-pre-wrap">{msg.text}</p>
+                  <div className="text-slate-200">
+                    <FormattedMessage text={msg.text} />
+                  </div>
                 </div>
               ))}
               {chatLoading && (

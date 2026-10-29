@@ -44,10 +44,6 @@ Ante esta necesidad, el proyecto propone el **diseno, construccion y validacion 
 
 El sistema opera bajo un modelo desacoplado: **el firmware local garantiza la seguridad fisica y la temporizacion critica**, mientras que **el navegador web visualiza, procesa y genera los reportes**.
 
-<p align="center">
-  <img src="Imagenes/grafico_flujo.png" alt="Diagrama de flujo del sistema" width="620">
-</p>
-
 ```text
 +------------------------------------------------------------------------------------+
 |                             CAPA DE CONTROL LOCAL                                  |
