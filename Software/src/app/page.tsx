@@ -14,11 +14,13 @@ import {
   Loader2,
   Lock,
   Mail,
+  RotateCcw,
   ShieldCheck,
   Usb,
   User
 } from "lucide-react";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
+import { validateEmail } from "@/lib/email-validation";
 
 export default function HomePage() {
   const router = useRouter();
@@ -27,8 +29,10 @@ export default function HomePage() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null);
 
   useEffect(() => {
     if (!supabase) return;
@@ -44,39 +48,114 @@ export default function HomePage() {
     if (!supabase) return;
     setError(null);
     setSuccess(null);
+    setUnconfirmedEmail(null);
     setLoading(true);
 
     try {
+      // 1. Validacion sintactica, de dominio y descarte de correos ficticios/desechables
+      const emailValidation = validateEmail(email);
+      if (!emailValidation.isValid) {
+        throw new Error(emailValidation.error);
+      }
+      const cleanEmail = emailValidation.cleanEmail;
+
+      // 2. Validacion de longitud de contrasena
+      if (password.length < 6) {
+        throw new Error("La contrasena debe tener al menos 6 caracteres.");
+      }
+
       if (tab === "login") {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
           password,
         });
-        if (signInError) throw signInError;
+
+        if (signInError) {
+          const msg = signInError.message.toLowerCase();
+          if (msg.includes("email not confirmed") || msg.includes("not confirmed")) {
+            setUnconfirmedEmail(cleanEmail);
+            throw new Error(
+              "Su direccion de correo no ha sido confirmada aun. Revise su bandeja de entrada o carpeta de correo no deseado y haga clic en el enlace de activacion."
+            );
+          }
+          if (msg.includes("invalid login credentials")) {
+            throw new Error("Credenciales de acceso incorrectas. Verifique el correo y la contrasena ingresados.");
+          }
+          throw signInError;
+        }
+
+        if (signInData.user && !signInData.user.email_confirmed_at && !signInData.session) {
+          setUnconfirmedEmail(cleanEmail);
+          throw new Error("Debe confirmar su correo electronico antes de acceder al laboratorio.");
+        }
+
         router.replace("/dashboard");
       } else {
+        // Validacion de nombre de operador
+        if (!fullName.trim() || fullName.trim().length < 3) {
+          throw new Error("Ingrese el nombre completo del operador (minimo 3 caracteres).");
+        }
+
+        const callbackUrl =
+          typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined;
+
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: email.trim(),
+          email: cleanEmail,
           password,
           options: {
+            emailRedirectTo: callbackUrl,
             data: {
-              full_name: fullName.trim() || undefined,
+              full_name: fullName.trim(),
             },
           },
         });
+
         if (signUpError) throw signUpError;
 
-        if (signUpData.session) {
-          router.replace("/dashboard");
-        } else {
-          setSuccess("Cuenta registrada correctamente. Puede iniciar sesión con sus credenciales.");
+        // Si el usuario ya existe en Supabase, el arreglo identities retorna vacio
+        if (signUpData.user && signUpData.user.identities && signUpData.user.identities.length === 0) {
+          throw new Error("Esta direccion de correo ya se encuentra registrada. Por favor inicie sesion.");
+        }
+
+        // Si se requiere confirmacion por correo real (comportamiento estandar de Supabase con Confirm email activo)
+        if (!signUpData.session || !signUpData.user?.email_confirmed_at) {
+          setUnconfirmedEmail(cleanEmail);
+          setSuccess(
+            `Se ha emitido un enlace de activacion a ${cleanEmail}. Para evitar registros no autorizados o ficticios, debe abrir el correo y confirmar su identidad antes de ingresar.`
+          );
           setTab("login");
+        } else {
+          router.replace("/dashboard");
         }
       }
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Error al procesar la autenticación.");
+      setError(caught instanceof Error ? caught.message : "Error al procesar la solicitud de autenticacion.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    if (!supabase || !unconfirmedEmail) return;
+    setResending(true);
+    setError(null);
+    try {
+      const callbackUrl =
+        typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined;
+
+      const { error: resendError } = await supabase.auth.resend({
+        type: "signup",
+        email: unconfirmedEmail,
+        options: {
+          emailRedirectTo: callbackUrl,
+        },
+      });
+      if (resendError) throw resendError;
+      setSuccess(`Enlace de verificacion reenviado a ${unconfirmedEmail}. Compruebe su bandeja de entrada.`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "No fue posible reenviar el mensaje de confirmacion.");
+    } finally {
+      setResending(false);
     }
   };
 
@@ -90,13 +169,13 @@ export default function HomePage() {
             UTM<span className="text-laser">·</span>LAB
           </Link>
           <span className="text-[11px] font-mono uppercase tracking-widest text-slate-400 bg-slate-900 border border-slate-800 px-2 py-0.5 rounded-sm">
-            IF511A Proyecto de Instrumentación Electrónica
+            IF511A Proyecto de Instrumentacion Electronica
           </span>
         </div>
 
         <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="hidden sm:inline">EN LÍNEA </span>
+          <span className="hidden sm:inline">EN LINEA</span>
         </div>
       </header>
 
@@ -107,15 +186,15 @@ export default function HomePage() {
           <div className="lg:col-span-7 space-y-6">
             <div className="inline-flex items-center gap-2 px-2.5 py-1 bg-[#10141C] border border-[#1A2230] text-xs font-mono text-laser rounded-sm">
               <Activity size={14} />
-              <span>Máquina Universal de Ensayos de Fuerza de Bajo Costo</span>
+              <span>Maquina Universal de Ensayos de Fuerza de Bajo Costo</span>
             </div>
 
             <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-white leading-tight font-sans">
-              Adquisición de datos en <span className="text-laser">tiempo real</span>.
+              Adquisicion de datos en <span className="text-laser">tiempo real</span>.
             </h1>
 
             <p className="text-slate-400 text-sm sm:text-base leading-relaxed max-w-xl font-sans">
-              Plataforma de adquisición serial en tiempo real para probetas poliméricas. Curvas continuas de esfuerzo frente a deformación, cálculo de rigidez y reportes certificados.
+              Plataforma de adquisicion serial en tiempo real para probetas polimericas. Curvas continuas de esfuerzo frente a deformacion, calculo de rigidez y reportes certificados.
             </p>
 
             {/* Technical Spec Matrix */}
@@ -125,7 +204,7 @@ export default function HomePage() {
                 <span className="text-white font-bold">10 kg / 100 N</span>
               </div>
               <div className="bg-[#0D1016] border border-[#1A2230] p-3 rounded-sm">
-                <span className="text-[10px] text-slate-500 block mb-1">TRANSMISIÓN SERIAL</span>
+                <span className="text-[10px] text-slate-500 block mb-1">TRANSMISION SERIAL</span>
                 <span className="text-cyan-400 font-bold">115200 BAUD</span>
               </div>
               <div className="bg-[#0D1016] border border-[#1A2230] p-3 rounded-sm col-span-2 sm:col-span-1">
@@ -139,10 +218,10 @@ export default function HomePage() {
                 <HardDrive size={14} className="text-laser" /> Cero almacenamiento cloud
               </span>
               <span className="flex items-center gap-1.5">
-                <FileText size={14} className="text-cyan-400" /> Exportación PDF con jsPDF
+                <FileText size={14} className="text-cyan-400" /> Exportacion PDF con jsPDF
               </span>
               <span className="flex items-center gap-1.5">
-                <Cpu size={14} className="text-emerald-400" /> Lima Perú
+                <Cpu size={14} className="text-emerald-400" /> Lima Peru
               </span>
             </div>
           </div>
@@ -173,7 +252,7 @@ export default function HomePage() {
                   : "text-slate-400 hover:text-white"
                   }`}
               >
-                INICIAR SESIÓN
+                INICIAR SESION
               </button>
               <button
                 type="button"
@@ -193,16 +272,60 @@ export default function HomePage() {
 
             {/* Error & Success Feedback */}
             {error && (
-              <div className="p-3 bg-rose-950/40 border border-rose-800 text-rose-300 text-xs font-mono rounded-sm flex items-start gap-2">
-                <AlertCircle size={15} className="mt-0.5 shrink-0 text-rose-400" />
-                <span>{error}</span>
+              <div className="p-3 bg-rose-950/40 border border-rose-800 text-rose-300 text-xs font-mono rounded-sm flex flex-col gap-2">
+                <div className="flex items-start gap-2">
+                  <AlertCircle size={15} className="mt-0.5 shrink-0 text-rose-400" />
+                  <span>{error}</span>
+                </div>
+                {unconfirmedEmail && (
+                  <button
+                    type="button"
+                    onClick={handleResendConfirmation}
+                    disabled={resending}
+                    className="self-start text-[11px] underline text-cyan-400 hover:text-cyan-300 flex items-center gap-1 mt-1 font-mono"
+                  >
+                    {resending ? (
+                      <>
+                        <Loader2 size={12} className="animate-spin" />
+                        <span>Reenviando confirmacion...</span>
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw size={12} />
+                        <span>Reenviar enlace de activacion</span>
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             )}
 
             {success && (
-              <div className="p-3 bg-emerald-950/40 border border-emerald-800 text-emerald-300 text-xs font-mono rounded-sm flex items-start gap-2">
-                <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-emerald-400" />
-                <span>{success}</span>
+              <div className="p-3 bg-emerald-950/40 border border-emerald-800 text-emerald-300 text-xs font-mono rounded-sm flex flex-col gap-2">
+                <div className="flex items-start gap-2">
+                  <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-emerald-400" />
+                  <span>{success}</span>
+                </div>
+                {unconfirmedEmail && (
+                  <button
+                    type="button"
+                    onClick={handleResendConfirmation}
+                    disabled={resending}
+                    className="self-start text-[11px] underline text-cyan-400 hover:text-cyan-300 flex items-center gap-1 mt-1 font-mono"
+                  >
+                    {resending ? (
+                      <>
+                        <Loader2 size={12} className="animate-spin" />
+                        <span>Reenviando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw size={12} />
+                        <span>No recibi el correo, reenviar</span>
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             )}
 
@@ -226,18 +349,25 @@ export default function HomePage() {
               )}
 
               <div>
-                <label className="text-[11px] text-slate-400 block mb-1">CORREO INSTITUCIONAL O TÉCNICO</label>
+                <label className="text-[11px] text-slate-400 block mb-1">
+                  {tab === "register" ? "CORREO ELECTRONICO (GMAIL O INSTITUCIONAL)" : "CORREO ELECTRONICO"}
+                </label>
                 <div className="relative">
                   <input
                     required
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="operador@laboratorio.edu"
+                    placeholder="operador@gmail.com o usuario@uni.edu.pe"
                     className="w-full bg-[#131720] border border-[#1E2532] text-white pl-9 pr-3 py-2 rounded-sm focus:border-laser outline-none"
                   />
                   <Mail size={15} className="absolute left-3 top-2.5 text-slate-500" />
                 </div>
+                {tab === "register" && (
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    Se admiten cuentas de Gmail (@gmail.com) y correos institucionales.
+                  </span>
+                )}
               </div>
 
               <div>
@@ -245,6 +375,7 @@ export default function HomePage() {
                 <div className="relative">
                   <input
                     required
+                    minLength={6}
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -253,6 +384,11 @@ export default function HomePage() {
                   />
                   <Lock size={15} className="absolute left-3 top-2.5 text-slate-500" />
                 </div>
+                {tab === "register" && (
+                  <span className="text-[10px] text-slate-500 mt-0.5 block">
+                    Minimo 6 caracteres.
+                  </span>
+                )}
               </div>
 
               <button
@@ -263,7 +399,7 @@ export default function HomePage() {
                 {loading ? (
                   <>
                     <Loader2 size={15} className="animate-spin" />
-                    <span>AUTENTICANDO...</span>
+                    <span>VERIFICANDO CREDENCIALES...</span>
                   </>
                 ) : (
                   <>
@@ -276,7 +412,7 @@ export default function HomePage() {
 
             <div className="pt-2 border-t border-[#1A2230] text-center">
               <span className="text-[11px] font-mono text-slate-500">
-                Supabase Auth
+                Supabase Auth con Verificacion de Correo
               </span>
             </div>
           </div>
@@ -287,11 +423,11 @@ export default function HomePage() {
       <footer className="border-t border-[#1A2230] bg-[#07080A] px-6 py-8 mt-auto">
         <div className="max-w-6xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
           <div className="flex flex-col gap-1 text-xs font-mono text-slate-500">
-            <span className="text-slate-400 font-semibold mb-1 uppercase tracking-widest text-[10px]">EQUIPO DE DESARROLLO E INVESTIGACIÓN</span>
+            <span className="text-slate-400 font-semibold mb-1 uppercase tracking-widest text-[10px]">EQUIPO DE DESARROLLO E INVESTIGACION</span>
             <div className="flex gap-4">
               <div className="flex flex-col">
                 <span className="text-white">Dante Olivas</span>
-                <span className="text-laser text-[10px]"> Lord Percival </span>
+                <span className="text-laser text-[10px]">Lord Percival</span>
               </div>
               <div className="flex flex-col border-l border-[#1A2230] pl-4">
                 <span className="text-white">Jhosep Tineo</span>
@@ -299,14 +435,14 @@ export default function HomePage() {
               </div>
               <div className="flex flex-col border-l border-[#1A2230] pl-4">
                 <span className="text-white">Juan Aguero</span>
-                <span className="text-laser text-[10px]">La Loba </span>
+                <span className="text-laser text-[10px]">La Loba</span>
               </div>
             </div>
           </div>
           <div className="text-xs font-mono text-slate-600 md:text-right">
-            UTM-LAB © {new Date().getFullYear()} — Universidad Nacional de Ingeniería.
+            UTM-LAB © {new Date().getFullYear()} — Universidad Nacional de Ingenieria.
             <br />
-            Sistema de Adquisición de Datos.
+            Sistema de Adquisicion de Datos.
           </div>
         </div>
       </footer>
