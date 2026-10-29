@@ -1,6 +1,5 @@
 # UTM Lab — Maquina Universal de Ensayos de Fuerza de Bajo Costo
 
-> Sistema de instrumentacion, adquisicion de datos en tiempo real y caracterizacion mecanica de materiales (hasta 100 N) desarrollado con microcontrolador Arduino / ESP32, celda de carga de 10 kg, accionamiento NEMA 17 y plataforma web en Next.js 15 / Supabase / Google Gemini / Vercel.
 
 ---
 
