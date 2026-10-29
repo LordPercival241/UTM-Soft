@@ -11,6 +11,8 @@
 -- Supabase se reserva EXCLUSIVAMENTE para:
 -- 1. Autenticación de operadores (auth.users con Email y Contraseña).
 -- 2. Validación de tokens JWT para el Asistente de IA (/api/assistant).
+-- 3. Keep-alive: /api/cron/keep-alive ejecuta SELECT profiles LIMIT 1 cada 5 días
+--    para evitar la pausa automática del plan gratuito (7 días sin actividad).
 
 -- Tabla opcional de perfiles de operadores (para consultar nombres y roles)
 create table if not exists public.profiles (

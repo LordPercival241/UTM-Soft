@@ -1,17 +1,16 @@
 /*
  * ==============================================================================
- * UTM Lab — Firmware de Control e Instrumentación 
- * Microcontrolador: Arduino Uno / Nano (ATmega328P)
- * 
- * Protocolo Serial v1 compatible con la plataforma web UTM Lab:
- * - Comunicación bidireccional a 115200 baudios.
- * - Confirmaciones con UUID (ACK,id=...,status=OK / ERROR).
- * - Cálculo de CRC-16/CCITT en cada trama SAMPLE.
- * - Parada de seguridad por sobrecarga (> 100 N), final de carrera y paro de emergencia.
+ * UTM Lab — Firmware de Control e Instrumentación
+ * Compatible con: Arduino Uno/Nano (ATmega328P) y ESP32 DevKit
+ *
+ * Jhosep o Juan cuando estén leyendo esto tómenlo como referencia porque
+ * está armado para que se pueda conectar con la web desplegada.
+ *
+ * NOTA ESP32: Si usan ESP32 con chip USB CP2102/CH340, instalar el driver
+ * correspondiente en Windows. El código detecta automáticamente la plataforma.
  * ==============================================================================
  */
 
-// --- ASIGNACIÓN DE PINES (Ajustar según cableado físico del prototipo) ---
 const int PIN_EMERGENCY_STOP = 2;   // Paro de emergencia (Normalmente cerrado / Pull-up)
 const int PIN_LIMIT_TOP      = 3;   // Final de carrera superior
 const int PIN_LIMIT_BOTTOM   = 4;   // Final de carrera inferior
@@ -263,7 +262,13 @@ void setup() {
 
   // Velocidad recomendada para instrumentación en tiempo real
   Serial.begin(115200);
-  while (!Serial) { ; } // Esperar conexión serie
+
+  // Compatibilidad multiplataforma:
+  // - Arduino Uno/Nano: Serial está listo inmediatamente, delay es solo precaución.
+  // - ESP32 DevKit (CP2102/CH340): Serial está listo tras Serial.begin().
+  // - ESP32-S2/S3 (USB nativo CDC): while(!Serial) puede colgar; usar delay.
+  // NO usar: while (!Serial) { ; }  ← cuelga en ESP32-S2/S3
+  delay(500); // Dar tiempo para que el USB se estabilice
 }
 
 // ==============================================================================
