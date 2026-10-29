@@ -4,84 +4,8 @@
 
 ---
 
-## 1. Introduccion y Contexto
 
-La **ciencia de materiales** estudia las propiedades mecanicas, fisicas y quimicas de los materiales para comprender su comportamiento bajo cargas externas y fundamentar aplicaciones tecnologicas. Entre las propiedades de mayor interes se encuentran la resistencia a la traccion, la deformacion elastica/plastica y el modulo de Young.
-
-Las **maquinas universales de ensayos (UTM)** industriales convencionales son equipos voluminosos, de costo elevado (miles de dolares) y con caracteristicas excesivas para laboratorios de docencia o caracterizacion de probetas polimericas a pequena escala.
-
-Ante esta necesidad, el proyecto propone el **diseno, construccion y validacion de una maquina universal de ensayos de fuerza de bajo costo y dimensiones reducidas**, integrando componentes comerciales accesibles, acondicionamiento de senales de precision, microcontrolador local y una aplicacion web moderna para adquisicion serial directa en el navegador, graficado en vivo y exportacion local trazable sin costos de almacenamiento cloud.
-
----
-
-## 2. Objetivos
-
-### Objetivo Principal
-**Disenar, construir y validar un prototipo de maquina universal de ensayos de fuerza de bajo costo**, capaz de aplicar una fuerza controlada (con limite de seguridad de 100 N) y registrar la respuesta mecanica de probetas polimericas.
-
-### Objetivos Especificos
-* **Estructura mecanica:** Disenar y fabricar la estructura fisica, guias lineales y mordazas de sujecion para probetas.
-* **Sistema de accionamiento:** Implementar el control de desplazamiento mediante un motor paso a paso NEMA 17 y su etapa de potencia.
-* **Instrumentacion y acondicionamiento:** Integrar y calibrar una celda de carga de 10 kg (~100 N) con conversor ADC de alta resolucion (HX711 o similar).
-* **Plataforma de software:** Desarrollar una interfaz web (UTM Lab) con Web Serial API, visualizacion en tiempo real y asistencia inteligente mediante Google Gemini.
-* **Curvas esfuerzo-deformacion:** Calcular en tiempo real el esfuerzo (sigma) y la deformacion (epsilon) a partir de los datos geometricos de la probeta y las lecturas calibradas.
-* **Evaluacion experimental:** Evaluar la resolucion, repetibilidad y respuesta del prototipo con diferentes muestras polimericas comerciales e impresas en 3D.
-
----
-
-## 3. Integrantes y Responsabilidades
-
-| Integrante | Rol / Especialidad | Responsabilidades Principales |
-| :--- | :--- | :--- |
-| **Dante Aliguere Olivas Huaman** | **Software y Plataforma Web** | Arquitectura de software en Next.js, adquisicion serial v1 con Web Serial API, validacion CRC-16, autenticacion y perfiles en Supabase, agente de IA con Google Gemini, exportacion local PDF/CSV, cron keep-alive y despliegue en Vercel. |
-| **Jhosep A. Tineo Santa Cruz** | **Instrumentacion y Sensores** | Acondicionamiento de senal para celda de carga de 10 kg, etapa de amplificacion/digitalizacion, integracion con Arduino/ESP32, calibracion metrologica y evaluacion de estabilidad. |
-| **Juan Jesus Aguero Ventura** | **Estructura Mecanica** | Modelado CAD 3D de la maquina, diseno y fabricacion de pinzas de sujecion (mordazas), calculo de tolerancias, soporte de guias y rigidez estructural. |
-| **Andre Edmundo Sanchez Marquina** | **Potencia y Accionamiento** | Seleccion del motor paso a paso NEMA 17, driver de potencia, dimensionamiento electrico, fuente de alimentacion y control de velocidad/torque del actuador. |
-
----
-
-## 4. Arquitectura del Sistema
-
-El sistema opera bajo un modelo desacoplado: **el firmware local garantiza la seguridad fisica y la temporizacion critica**, mientras que **el navegador web visualiza, procesa y genera los reportes**.
-
-```text
-+------------------------------------------------------------------------------------+
-|                             CAPA DE CONTROL LOCAL                                  |
-|                                                                                    |
-|   [ Celda de Carga 10 kg ] --> [ ADC / Acondicionamiento ]                         |
-|                                         |                                          |
-|   [ Finales de carrera / Paro ] ------> [ Microcontrolador ]                       |
-|                                         | (Arduino Uno/Nano o ESP32 DevKit)        |
-|                                         |                                          |
-|   [ Driver de potencia ] <--------------+                                          |
-|            |                                                                       |
-|   [ Motor NEMA 17 + Tornillo ] --> [ Desplazamiento mecanico ]                     |
-+-----------------------------------------+------------------------------------------+
-                                          | Cable USB (Protocolo Serial v1, CRC-16)
-                                          v
-+------------------------------------------------------------------------------------+
-|                          CAPA DE SOFTWARE (UTM LAB)                                |
-|                                                                                    |
-|   Navegador del Operador (Chrome / Edge)                                           |
-|   +-- Web Serial API (Lectura bidireccional local, deteccion de saltos de seq)     |
-|   +-- Motor de calculo en vivo (Esfuerzo en MPa, Deformacion de ingenieria)        |
-|   +-- Interfaz grafica React 19 / Recharts (Curva sin datos sinteticos)            |
-|   +-- Asistente de Operacion flotante (Chat contextual con Google Gemini)          |
-|                                                                                    |
-|   Servicios en la Nube                                                             |
-|   +-- Vercel (Alojamiento Edge/Serverless, HTTPS, Cron keep-alive)                 |
-|   +-- Supabase Auth (Acceso seguro por correo y contrasena)                        |
-|   +-- Google Gemini API (Respuestas contextualizadas al operador)                  |
-|                                                                                    |
-|   * Cero Consumo de Almacenamiento Cloud: Todos los datos de ensayos (curvas,      |
-|     muestras completas y reportes PDF/CSV) se generan en el navegador del          |
-|     operador y se descargan directamente a su equipo local.                        |
-+------------------------------------------------------------------------------------+
-```
-
----
-
-## 5. Plataforma de Software (UTM Lab)
+## 1. Plataforma de Software (UTM Lab)
 
 La aplicacion web ha sido construida con los siguientes componentes y estandares:
 
@@ -95,7 +19,7 @@ La aplicacion web ha sido construida con los siguientes componentes y estandares
 * **Asistente de IA (Google Gemini):** Ruta API Serverless en `/api/assistant` integrada con Google Generative AI (`gemini-2.5-flash`). Asiste al operador en la interpretacion de mensajes del controlador, normas de ensayo y diagnostico de alertas. No posee permisos de control fisico directo sobre la maquina.
 * **Cron Keep-Alive:** Endpoint `GET /api/cron/keep-alive` programado via Vercel Cron cada 5 dias para evitar la pausa automatica de Supabase en el plan gratuito (7 dias de inactividad). Configurado en `vercel.json`.
 
-### 5.1. Estructura de Archivos del Software
+### 1.1. Estructura de Archivos del Software
 
 ```text
 src/
@@ -128,11 +52,11 @@ vercel.json                       Configuracion de Vercel Cron (keep-alive)
 
 ---
 
-## 6. Protocolo Serial v1 (Hardware - Software)
+## 2. Protocolo Serial v1 (Hardware - Software)
 
 La comunicacion entre el microcontrolador y la aplicacion web se realiza a traves de tramas de texto estructuradas con confirmacion y suma de verificacion.
 
-### 6.1. Comandos de Control (Handshake)
+### 2.1. Comandos de Control (Handshake)
 
 Todas las ordenes enviadas por la interfaz web llevan un identificador UUID unico. El firmware debe responder con un mensaje `ACK`:
 
@@ -161,7 +85,7 @@ ACK,id=<uuid>,status=ERROR,reason=Paro_de_emergencia_activado
 
 El timeout de confirmacion en la aplicacion web es de 3 segundos. Si el microcontrolador no responde con `ACK` dentro de ese plazo, la operacion se declara fallida.
 
-### 6.2. Tramas de Muestras (SAMPLE)
+### 2.2. Tramas de Muestras (SAMPLE)
 
 Cada punto de ensayo se transmite en una sola linea terminada en `\n`:
 
@@ -179,7 +103,7 @@ SAMPLE,seq=42,t_ms=1200,force_raw=4567,displacement_raw=123,force_n=101.22,displ
 > [!IMPORTANT]
 > Las muestras recibidas con CRC invalido son descartadas de inmediato. Si se detecta un salto de secuencia (por ejemplo, de `seq=10` a `seq=14`), la interfaz registra las muestras perdidas y lo consigna en el reporte.
 
-### 6.3. Eventos Asincronos de Seguridad (EVENT)
+### 2.3. Eventos Asincronos de Seguridad (EVENT)
 
 El firmware notifica eventos criticos de inmediato:
 ```text
@@ -189,7 +113,7 @@ EVENT,type=FAULT,detail=Error_lectura_celda
 EVENT,type=TEST_FINISHED
 ```
 
-### 6.4. Firmware de Control (firmware/utm_controller/utm_controller.ino)
+### 2.4. Firmware de Control (firmware/utm_controller/utm_controller.ino)
 
 El proyecto incluye el codigo completo de firmware compatible con **Arduino Uno / Nano (ATmega328P)** y **ESP32 DevKit**:
 
@@ -213,7 +137,7 @@ El proyecto incluye el codigo completo de firmware compatible con **Arduino Uno 
 
 ---
 
-## 7. Modelo Matematico de Ensayos
+## 3. Modelo Matematico de Ensayos
 
 A partir de la geometria inicial ingresada por el operador y los valores calibrados transmitidos por el microcontrolador:
 
@@ -230,9 +154,9 @@ $$\varepsilon = \frac{\Delta L}{L_0} \quad [\text{adimensional}]$$
 
 ---
 
-## 8. Puesta en Marcha Local
+## 4. Puesta en Marcha Local
 
-### 8.1. Requisitos Previos
+### 4.1. Requisitos Previos
 
 * **Node.js:** Version 20.x o superior.
 * **Navegador:** Google Chrome o Microsoft Edge (requerido para Web Serial API).
@@ -244,7 +168,7 @@ $$\varepsilon = \frac{\Delta L}{L_0} \quad [\text{adimensional}]$$
 * **Supabase:** Proyecto en la nube (solo requiere autenticacion habilitada).
 * **Google Gemini API:** Clave de API para el asistente tecnico (gratuita en [Google AI Studio](https://aistudio.google.com/)).
 
-### 8.2. Carga del Firmware
+### 4.2. Carga del Firmware
 
 1. Conecte el microcontrolador a la computadora mediante cable USB de datos.
 2. Abra **Arduino IDE**.
@@ -259,7 +183,7 @@ $$\varepsilon = \frac{\Delta L}{L_0} \quad [\text{adimensional}]$$
 > [!IMPORTANT]
 > Cierre el Monitor Serie de Arduino IDE antes de conectar desde la aplicacion web. El puerto COM es de acceso exclusivo y la Web Serial API no podra abrirlo si Arduino IDE lo tiene retenido.
 
-### 8.3. Configuracion y Ejecucion de la Plataforma Web
+### 4.3. Configuracion y Ejecucion de la Plataforma Web
 
 1. Clonar el repositorio y navegar a la carpeta del software:
    ```bash
@@ -296,7 +220,7 @@ $$\varepsilon = \frac{\Delta L}{L_0} \quad [\text{adimensional}]$$
    ```
    Abra `http://localhost:3000` en Chrome o Edge.
 
-### 8.4. Scripts Disponibles
+### 4.4. Scripts Disponibles
 
 ```bash
 npm run dev        # Servidor de desarrollo con Next.js
@@ -308,9 +232,9 @@ npm run typecheck  # Verificacion estricta de tipos TypeScript
 
 ---
 
-## 9. Despliegue en Produccion (Supabase + Vercel)
+## 5. Despliegue en Produccion (Supabase + Vercel)
 
-### 9.1. Configuracion de Supabase
+### 5.1. Configuracion de Supabase
 
 1. Crear un proyecto en [supabase.com](https://supabase.com):
    - **Name:** `utm-lab`
@@ -329,86 +253,14 @@ npm run typecheck  # Verificacion estricta de tipos TypeScript
 > [!CAUTION]
 > La clave `service_role` tiene permisos completos sobre la base de datos. No debe exponerse en el frontend ni en repositorios publicos. Utilizarla exclusivamente como variable de entorno en el servidor (Vercel).
 
-### 9.2. Obtencion de la Clave de Google Gemini
 
-1. Ir a [Google AI Studio](https://aistudio.google.com/apikey).
-2. Iniciar sesion con una cuenta de Google.
-3. Hacer clic en **Create API Key** y seleccionar un proyecto de Google Cloud.
-4. Copiar la clave generada (sera `GEMINI_API_KEY`).
+## 6. Compatibilidad de Microcontroladores
 
-La API de Gemini dispone de una cuota gratuita de 60 solicitudes por minuto para el modelo `gemini-2.5-flash`. No requiere tarjeta de credito.
-
-### 9.3. Despliegue en Vercel
-
-1. Subir el codigo a un repositorio en GitHub:
-   ```bash
-   git init
-   git add .
-   git commit -m "UTM Lab v1.1"
-   git branch -M main
-   git remote add origin https://github.com/<usuario>/utm-lab.git
-   git push -u origin main
-   ```
-
-2. Ir a [vercel.com](https://vercel.com), crear una cuenta (se puede vincular con GitHub) y hacer clic en **Add New - Project**.
-
-3. Seleccionar el repositorio de GitHub e importarlo. Vercel detectara automaticamente que es un proyecto Next.js.
-
-4. **Configurar el Root Directory** antes de desplegar:
-   - En la pantalla de configuracion, expandir **Root Directory**.
-   - Ingresar: `Resources/Software`.
-
-5. Configurar las **variables de entorno** en la misma pantalla (o posteriormente en **Settings - Environment Variables**):
-
-   | Variable | Valor | Entornos |
-   | :--- | :--- | :--- |
-   | `NEXT_PUBLIC_SUPABASE_URL` | `https://XXXXX.supabase.co` | Production, Preview, Development |
-   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `eyJhbGciOi...` | Production, Preview, Development |
-   | `GEMINI_API_KEY` | `AIzaSy...` | Production, Preview, Development |
-   | `GEMINI_MODEL` | `gemini-2.5-flash` | Production, Preview, Development |
-   | `CRON_SECRET` | (generar con `openssl rand -base64 32`) | Production |
-   | `SUPABASE_SERVICE_ROLE_KEY` | `eyJhbGciOi...` (service_role) | Production |
-
-6. Hacer clic en **Deploy** y esperar la compilacion (aproximadamente 1-2 minutos).
-
-7. Vercel asignara una URL de produccion (por ejemplo, `https://utm-lab.vercel.app`).
-
-8. Volver a **Supabase - Authentication - URL Configuration** y actualizar:
-   - **Site URL:** `https://utm-lab.vercel.app`
-   - **Redirect URLs:** agregar `https://utm-lab.vercel.app/auth/callback`
-
-9. Verificar el cron keep-alive en **Vercel - Settings - Crons**. Debe aparecer el job `/api/cron/keep-alive` programado con la expresion `0 8 */5 * *`. Se puede ejecutar manualmente con el boton "Trigger" para validar que devuelve `{"ok": true}`.
-
-> [!IMPORTANT]
-> **Root Directory obligatorio:** Dado que el codigo fuente de la aplicacion no esta en la raiz del repositorio sino en `Resources/Software/`, es imprescindible configurar el Root Directory en Vercel. Sin esta configuracion, el build fallara porque Vercel no encontrara el `package.json`.
-
-> [!TIP]
-> La Web Serial API exige un contexto seguro (HTTPS). Al desplegar en Vercel, el dominio obtiene un certificado SSL automatico y el archivo `next.config.ts` ya contiene la cabecera `Permissions-Policy: serial=(self)` requerida para autorizar el acceso al puerto USB.
-
-### 9.4. Keep-Alive de Supabase (Plan Gratuito)
-
-Supabase pausa automaticamente los proyectos del plan gratuito si no detecta actividad en la base de datos durante 7 dias consecutivos. Para evitar esto, el proyecto incluye:
-
-* **Endpoint:** `GET /api/cron/keep-alive` ejecuta una consulta minima (`SELECT id FROM profiles LIMIT 1`) para reiniciar el contador de inactividad.
-* **Programacion:** Vercel Cron invoca el endpoint cada 5 dias (expresion: `0 8 */5 * *`), dejando 2 dias de margen respecto al limite de 7 dias.
-* **Seguridad:** El endpoint esta protegido por la variable `CRON_SECRET`. Vercel Cron inyecta automaticamente el header `Authorization: Bearer <CRON_SECRET>` en cada invocacion.
-* **Configuracion:** Definida en [`vercel.json`](vercel.json).
-
-Si no se utiliza Vercel, el endpoint puede invocarse desde cualquier servicio de cron externo (cron-job.org, UptimeRobot, GitHub Actions) con una frecuencia maxima de 6 dias:
-
-```bash
-curl -H "Authorization: Bearer $CRON_SECRET" https://<dominio>.vercel.app/api/cron/keep-alive
-```
-
----
-
-## 10. Compatibilidad de Microcontroladores
-
-### 10.1. Arduino Uno / Nano (ATmega328P)
+### 6.1. Arduino Uno / Nano (ATmega328P)
 
 Plataforma de referencia. El firmware funciona sin modificaciones. Driver USB incluido en Windows para la mayoria de placas oficiales. Para clones con chip CH340, instalar el driver correspondiente.
 
-### 10.2. ESP32 DevKit
+### 6.2. ESP32 DevKit
 
 El firmware es compatible con ESP32 DevKit. Consideraciones especificas:
 
@@ -420,7 +272,7 @@ El firmware es compatible con ESP32 DevKit. Consideraciones especificas:
 * **Verificacion:** Tras conectar el ESP32, debe aparecer un puerto COM en el Administrador de Dispositivos de Windows. Si no aparece o muestra un icono de advertencia, el driver no esta instalado.
 * **Pines GPIO:** Los pines del firmware estan definidos para Arduino. Para ESP32, remapear segun el pinout de la placa utilizada. Evitar los pines reservados para funciones internas del ESP32 (GPIO 0, 2, 5, 12, 15 en el arranque).
 
-### 10.3. Requisitos del Navegador para Web Serial API
+### 6.3. Requisitos del Navegador para Web Serial API
 
 La Web Serial API solo esta disponible en:
 
@@ -431,7 +283,7 @@ No esta soportada en Firefox, Safari ni en navegadores moviles. Adicionalmente, 
 
 ---
 
-## 11. Estado del Proyecto y Hoja de Ruta
+## 7. Estado del Proyecto y Hoja de Ruta
 
 - [x] Definicion conceptual y parametros de diseno (limite 100 N).
 - [x] Distribucion de responsabilidades entre los cuatro integrantes.
