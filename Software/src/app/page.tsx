@@ -35,7 +35,12 @@ export default function HomePage() {
   const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!supabase) return;
+    if (!hasSupabaseConfig || !supabase) {
+      setError(
+        "No se detecto la configuracion de Supabase. Verifique que NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY esten agregadas en Vercel y realice un Redeploy."
+      );
+      return;
+    }
     supabase.auth.getSession().then(({ data }) => {
       if (data.session?.user) {
         router.replace("/dashboard");
@@ -45,7 +50,12 @@ export default function HomePage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!supabase) return;
+    if (!hasSupabaseConfig || !supabase) {
+      setError(
+        "No se puede conectar con Supabase. Faltan las variables de entorno en Vercel."
+      );
+      return;
+    }
     setError(null);
     setSuccess(null);
     setUnconfirmedEmail(null);
@@ -97,7 +107,9 @@ export default function HomePage() {
         }
 
         const callbackUrl =
-          typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined;
+          typeof window !== "undefined" && window.location.origin
+            ? `${window.location.origin.replace(/\/+$/, "")}/auth/callback`
+            : undefined;
 
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: cleanEmail,
@@ -129,7 +141,18 @@ export default function HomePage() {
         }
       }
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Error al procesar la solicitud de autenticacion.");
+      const rawMsg =
+        caught instanceof Error ? caught.message : "Error al procesar la solicitud de autenticacion.";
+      if (
+        rawMsg.toLowerCase().includes("invalid path") ||
+        rawMsg.toLowerCase().includes("requested path is invalid")
+      ) {
+        setError(
+          "Error en la URL de Supabase/Vercel: Verifique que NEXT_PUBLIC_SUPABASE_URL en Vercel sea exactamente 'https://<id-proyecto>.supabase.co' (sin barras finales ni rutas como /auth/v1) y que en Supabase (Authentication -> URL Configuration) las URLs sean completas con https://."
+        );
+      } else {
+        setError(rawMsg);
+      }
     } finally {
       setLoading(false);
     }
@@ -141,7 +164,9 @@ export default function HomePage() {
     setError(null);
     try {
       const callbackUrl =
-        typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined;
+        typeof window !== "undefined" && window.location.origin
+          ? `${window.location.origin.replace(/\/+$/, "")}/auth/callback`
+          : undefined;
 
       const { error: resendError } = await supabase.auth.resend({
         type: "signup",

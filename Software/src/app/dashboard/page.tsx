@@ -157,13 +157,34 @@ export default function DashboardPage() {
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const session = async () => {
-      if (!supabase) return router.replace("/");
-      const { data } = await supabase.auth.getUser();
-      if (!data.user) return router.replace("/");
-      setUserName(data.user.user_metadata?.full_name || data.user.email || "Operador");
+    if (!supabase) {
+      router.replace("/");
+      return;
+    }
+
+    // 1. Verificar sesion actual de forma asincrona
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error || !session?.user) {
+        router.replace("/");
+      } else {
+        setUserName(session.user.user_metadata?.full_name || session.user.email || "Operador");
+      }
+    });
+
+    // 2. Suscribirse a eventos de cambio de sesion (renovacion de token, logout, etc.)
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session?.user) {
+        router.replace("/");
+      } else {
+        setUserName(session.user.user_metadata?.full_name || session.user.email || "Operador");
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
     };
-    void session();
   }, [router]);
 
   // Actualización automática de área inicial calculada A0 = w * t
