@@ -33,6 +33,10 @@ create policy "Operadores pueden actualizar su propio perfil"
   on public.profiles for update 
   using (auth.uid() = id);
 
+create policy "Operadores pueden insertar su propio perfil"
+  on public.profiles for insert
+  with check (auth.uid() = id);
+
 -- Trigger automático para registrar el perfil cuando un usuario se registra
 create or replace function public.handle_new_user()
 returns trigger as $$
