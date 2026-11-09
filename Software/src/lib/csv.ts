@@ -9,7 +9,7 @@ const escape = (value: string | number) => {
 
 export function makeTestCsv(setup: TestSetup, samples: Sample[], droppedSamples: number) {
   const metadata = [
-    ["format", "utm-lab-csv-v1"],
+    ["format", "utmachine-lab-csv-v1"],
     ["specimen_id", setup.specimenId],
     ["material", setup.material],
     ["gauge_length_mm", setup.gaugeLengthMm],

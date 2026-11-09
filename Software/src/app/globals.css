@@ -2,20 +2,51 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --bg-lab: #07080a;
-  --panel-lab: #0d1017;
-  --panel-lab-elevated: #121721;
-  --border-lab: #1a2332;
-  --border-lab-bright: #27344a;
-  --text-main: #f8fafc;
-  --text-muted: #8fa0b5;
-  --laser: #ff2e93;
-  --laser-glow: rgba(255, 46, 147, 0.35);
-  --cyan: #00f0ff;
-  --emerald: #10b981;
-  --amber: #f59e0b;
-  --rose: #ef4444;
+:root,
+[data-theme="dark"] {
+  --color-canvas: #12161A;
+  --color-card: #1B2026;
+  --color-card-elevated: #222830;
+  --color-card-inner: #15191E;
+  --color-border: #2B323B;
+  --color-border-subtle: #242A32;
+  --color-text-main: #E1E5EA;
+  --color-text-muted: #8C97A5;
+  --color-text-dim: #64748B;
+  --color-accent: #2563EB;
+  --color-accent-hover: #3B82F6;
+  --color-accent-active: #1D4ED8;
+  --color-accent-glow: rgba(37, 99, 235, 0.25);
+  --color-telemetry: #38BDF8;
+  --color-chart: #6366F1;
+  --color-chart-grid: #242A32;
+  --color-scrollbar-track: #12161A;
+  --color-scrollbar-thumb: #2B323B;
+  --color-scrollbar-thumb-hover: #3B4450;
+  --color-card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="light"] {
+  --color-canvas: #F4F1EA;
+  --color-card: #FFFFFF;
+  --color-card-elevated: #FAF8F5;
+  --color-card-inner: #F8F6F0;
+  --color-border: #E2DDD5;
+  --color-border-subtle: #EDE9E1;
+  --color-text-main: #1E293B;
+  --color-text-muted: #64748B;
+  --color-text-dim: #94A3B8;
+  --color-accent: #1D4ED8;
+  --color-accent-hover: #2563EB;
+  --color-accent-active: #1E40AF;
+  --color-accent-glow: rgba(29, 78, 216, 0.15);
+  --color-telemetry: #0284C7;
+  --color-chart: #4F46E5;
+  --color-chart-grid: #E2DDD5;
+  --color-scrollbar-track: #F4F1EA;
+  --color-scrollbar-thumb: #D5CFC5;
+  --color-scrollbar-thumb-hover: #C5BFB5;
+  --color-card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
 }
 
 * {
@@ -25,123 +56,71 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background-color: var(--bg-lab);
-  background-image: 
-    radial-gradient(circle at 50% 0%, rgba(255, 46, 147, 0.04) 0%, transparent 45%),
-    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-  background-size: 100% 100%, 32px 32px, 32px 32px;
-  color: var(--text-main);
+  background-color: var(--color-canvas);
+  color: var(--color-text-main);
   font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* Scrollbar metrológica */
+/* Scrollbar ergonomica */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #090b0e;
+  background: var(--color-scrollbar-track);
 }
 ::-webkit-scrollbar-thumb {
-  background: #1c2432;
+  background: var(--color-scrollbar-thumb);
   border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #2b384c;
+  background: var(--color-scrollbar-thumb-hover);
 }
 
-/* Utilidades de instrumentación */
+/* Utilidades numericas de instrumentacion */
 .font-mono-numbers {
   font-family: var(--font-mono), monospace;
   font-feature-settings: "tnum" 1;
   font-variant-numeric: tabular-nums;
 }
 
-@keyframes pulse-laser {
-  0%, 100% {
-    opacity: 1;
-    box-shadow: 0 0 10px #ff2e93, 0 0 20px rgba(255, 46, 147, 0.5);
-  }
-  50% {
-    opacity: 0.35;
-    box-shadow: 0 0 3px #ff2e93;
-  }
-}
-
-.animate-pulse-laser {
-  animation: pulse-laser 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-@keyframes pulse-cyan {
-  0%, 100% {
-    opacity: 1;
-    box-shadow: 0 0 8px #00f0ff, 0 0 16px rgba(0, 240, 255, 0.4);
-  }
-  50% {
-    opacity: 0.4;
-    box-shadow: 0 0 2px #00f0ff;
-  }
-}
-
-.animate-pulse-cyan {
-  animation: pulse-cyan 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* Efecto de borde técnico nítido */
-.tech-border {
-  border: 1px solid var(--border-lab);
-}
-
-.tech-border-bright {
-  border: 1px solid var(--border-lab-bright);
-}
-
-.tech-panel {
-  background: var(--panel-lab);
-  border: 1px solid var(--border-lab);
-}
-
-.tech-panel-elevated {
-  background: var(--panel-lab-elevated);
-  border: 1px solid var(--border-lab-bright);
-}
-
-/* Indicador láser de botón de inicio */
+/* Boton de accion principal con azul medio / real anti-fatiga */
 .btn-laser {
-  background: var(--laser);
+  background: var(--color-accent);
   color: #ffffff;
   font-weight: 700;
   letter-spacing: 0.04em;
-  box-shadow: 0 0 16px var(--laser-glow);
+  box-shadow: 0 0 14px var(--color-accent-glow);
   transition: all 0.15s ease-in-out;
 }
 .btn-laser:hover:not(:disabled) {
-  background: #ff4d9f;
-  box-shadow: 0 0 24px rgba(255, 46, 147, 0.6);
+  background: var(--color-accent-hover);
+  box-shadow: 0 0 20px var(--color-accent-glow);
   transform: translateY(-1px);
 }
 .btn-laser:active:not(:disabled) {
-  background: #d01a72;
+  background: var(--color-accent-active);
   transform: translateY(0);
 }
 .btn-laser:disabled {
-  background: #2a1523;
-  color: #6d405b;
+  background: #252d38;
+  color: #5c6777;
   box-shadow: none;
   cursor: not-allowed;
 }
 
-/* Grid de fondo sutil para el gráfico */
+/* Recharts grid adaptativa */
 .recharts-cartesian-grid-horizontal line,
 .recharts-cartesian-grid-vertical line {
-  stroke: #161e2a !important;
+  stroke: var(--color-chart-grid) !important;
   stroke-dasharray: 2 4 !important;
 }
 
 .recharts-tooltip-cursor {
-  stroke: rgba(255, 46, 147, 0.45) !important;
+  stroke: var(--color-chart) !important;
   stroke-width: 1px !important;
   stroke-dasharray: 3 3 !important;
+  opacity: 0.5;
 }

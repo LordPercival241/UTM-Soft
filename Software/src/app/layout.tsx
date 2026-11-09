@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "@/lib/theme-context";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -15,15 +16,21 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "UTM Lab — Suite Metrológica de Ensayos Mecánicos",
-  description: "Adquisición en tiempo real, trazabilidad serial v1 y caracterización de probetas poliméricas.",
+  title: "UTMachine Lab — Suite Metrologica de Ensayos Mecanicos",
+  description: "Adquisicion en tiempo real, trazabilidad serial v1 y caracterizacion de probetas polimericas.",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-icon.png",
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es" className={`${inter.variable} ${jetbrainsMono.variable}`}>
-      <body className="bg-lab-bg text-lab-text antialiased selection:bg-laser selection:text-white font-sans min-h-screen">
-        {children}
+    <html lang="es" className={`${inter.variable} ${jetbrainsMono.variable}`} data-theme="dark">
+      <body className="antialiased font-sans min-h-screen">
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

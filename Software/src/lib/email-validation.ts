@@ -116,7 +116,7 @@ export function validateEmail(rawEmail: string): EmailValidationResult {
   if (!EMAIL_REGEX.test(cleanEmail)) {
     return {
       isValid: false,
-      error: "El formato del correo electronico no es valido (ejemplo: operador@gmail.com o usuario@uni.edu.pe)."
+      error: "El formato del correo electronico no es valido (Ejem: Usuario_1@gmail.com)."
     };
   }
 

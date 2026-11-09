@@ -1,0 +1,25 @@
+import type { SVGProps } from "react";
+
+export interface UtmLogoProps extends SVGProps<SVGSVGElement> {
+  size?: number | string;
+}
+
+export function UtmLogo({ size = 24, className = "", ...props }: UtmLogoProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 618 625"
+      width={size}
+      height={size}
+      fill="currentColor"
+      aria-hidden="true"
+      className={`inline-block shrink-0 ${className}`}
+      {...props}
+    >
+      <path d="M 165 113 L 112 154 L 112 430 L 110 431 L 60 398 L 59 194 L 6 235 L 6 432 L 167 532 L 167 113 Z" />
+      <path d="M 308 4 L 204 84 L 204 152 L 279 95 L 281 96 L 281 605 L 310 622 L 335 605 L 335 93 L 414 152 L 414 83 L 313 5 Z" />
+      <path d="M 453 111 L 452 542 L 507 509 L 508 330 L 516 332 L 520 361 L 543 361 L 554 326 L 559 327 L 559 475 L 610 444 L 610 228 L 555 195 L 536 261 L 503 156 Z" />
+    </svg>
+  );
+}
+

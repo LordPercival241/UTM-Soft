@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import type { Sample, TestSetup } from "@/lib/test-domain";
+import { UTM_LOGO_BASE64 } from "@/lib/logo-base64";
 
 export async function captureChartAsPng(containerElement: HTMLElement): Promise<string | null> {
   const svg = containerElement.querySelector("svg");
@@ -85,15 +86,24 @@ export function generateTestPdf(
   doc.setFillColor(8, 18, 29);
   doc.rect(0, 0, pageWidth, 28, "F");
 
+  // Logo Oficial UTM
+  try {
+    doc.addImage(UTM_LOGO_BASE64, "PNG", margin, 4, 20, 20);
+  } catch {
+    // Si falla la insercion grafica, no bloquear la emision del reporte
+  }
+
+  const textStartX = margin + 24;
+
   doc.setTextColor(125, 211, 252); // Cyan
-  doc.setFontSize(16);
+  doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  doc.text("UTM LAB · REPORTE DE ENSAYO DE TRACCIÓN", margin, 12);
+  doc.text("UTMachine LAB · REPORTE DE ENSAYO DE TRACCIÓN", textStartX, 12);
 
   doc.setTextColor(166, 189, 203);
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
-  doc.text("Máquina Universal de Ensayos Low-Cost · Instrumentación Trazable", margin, 18);
+  doc.text("Máquina Universal de Ensayos Low-Cost · Instrumentación Trazable", textStartX, 18);
 
   const now = new Date();
   const dateStr = now.toLocaleDateString("es-ES", {

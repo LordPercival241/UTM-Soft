@@ -37,7 +37,7 @@ const requestSchema = z.object({
 
 type RequestContext = z.infer<typeof requestSchema>["context"];
 
-const instructions = `Eres el Asistente Técnico y Metrológico de UTM Lab, una plataforma avanzada para Máquinas Universales de Ensayos Mecánicos de Tracción (bajo costo, diseñada para caracterización de polímeros con celda de carga de 10 kg / 100 N y microcontrolador Arduino Uno/Nano o ESP32 DevKit).
+const instructions = `Eres el Asistente Técnico y Metrológico de UTMachine Lab, una plataforma avanzada para Máquinas Universales de Ensayos Mecánicos de Tracción (bajo costo, diseñada para caracterización de polímeros con celda de carga de 10 kg / 100 N y microcontrolador Arduino Uno/Nano o ESP32 DevKit).
 
 Tu misión es guiar al operador con rigor técnico, precisión física y claridad metrológica.
 

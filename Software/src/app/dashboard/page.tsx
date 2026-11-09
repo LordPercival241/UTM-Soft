@@ -25,7 +25,8 @@ import {
   Terminal,
   Usb,
   Wifi,
-  WifiOff
+  WifiOff,
+  X
 } from "lucide-react";
 import {
   CartesianGrid,
@@ -41,6 +42,9 @@ import { captureChartAsPng, generateTestPdf } from "@/lib/pdf-report";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 import { testSetupSchema, type TestSetup, type TestStatus } from "@/lib/test-domain";
 import { useSerialTestSession } from "@/hooks/use-serial-test-session";
+import { useTheme } from "@/lib/theme-context";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { UtmLogo } from "@/components/utm-logo";
 
 const statusConfig: Record<
   TestStatus,
@@ -72,8 +76,8 @@ const statusConfig: Record<
   },
   running: {
     label: "ENSAYO EN CURSO",
-    color: "text-laser border-laser/40 bg-laser/10",
-    badge: "bg-laser",
+    color: "text-theme-accent border-theme-accent/40 bg-theme-accent/10",
+    badge: "bg-theme-accent",
     pulse: true,
   },
   stopped: {
@@ -114,7 +118,7 @@ function FormattedMessage({ text }: { text: string }) {
             {parts.map((part, pIdx) => {
               if (part.startsWith("**") && part.endsWith("**")) {
                 return (
-                  <strong key={pIdx} className="text-white font-semibold">
+                  <strong key={pIdx} className="text-theme-main font-semibold">
                     {part.slice(2, -2)}
                   </strong>
                 );
@@ -129,6 +133,7 @@ function FormattedMessage({ text }: { text: string }) {
 }
 
 export default function DashboardPage() {
+  const { theme } = useTheme();
   const router = useRouter();
   const serial = useSerialTestSession();
   const [setup, setSetup] = useState(initialSetup);
@@ -358,8 +363,8 @@ export default function DashboardPage() {
 
   if (!hasSupabaseConfig) {
     return (
-      <main className="min-h-screen flex items-center justify-center p-6 text-slate-400 font-mono">
-        <p className="border border-slate-800 bg-slate-900/60 p-6 rounded-sm">CONFIGURACIÓN INCOMPLETA: Faltan variables de Supabase.</p>
+      <main className="min-h-screen flex items-center justify-center p-6 text-theme-muted font-mono bg-theme-canvas">
+        <p className="border border-theme-border bg-theme-card p-6 rounded-sm text-theme-main">CONFIGURACIÓN INCOMPLETA: Faltan variables de Supabase.</p>
       </main>
     );
   }
@@ -367,18 +372,18 @@ export default function DashboardPage() {
   const currentStatus = statusConfig[serial.status];
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#07080A] text-slate-100">
+    <div className="min-h-screen flex flex-col bg-theme-canvas text-theme-main transition-colors duration-200">
       {/* ========================================================================= */}
       {/* 1. TOP BAR: ENCABEZADO METROLÓGICO INDUSTRIAL                            */}
       {/* ========================================================================= */}
-      <header className="border-b border-[#1A2230] bg-[#0A0D13]/90 backdrop-blur-md px-6 py-3 flex items-center justify-between sticky top-0 z-40">
+      <header className="border-b border-theme-border bg-theme-card/90 backdrop-blur-md px-6 py-3 flex items-center justify-between sticky top-0 z-40 transition-colors">
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 bg-laser rounded-none" />
-            <h1 className="font-mono text-base font-bold tracking-wider text-white">
-              UTM<span className="text-laser">·</span>LAB
+          <div className="flex items-center gap-2.5">
+            <UtmLogo size={24} className="text-theme-accent" />
+            <h1 className="font-mono text-base font-bold tracking-wider text-theme-main">
+              UTMachine<span className="text-theme-accent">·</span>LAB
             </h1>
-            <span className="text-[11px] font-mono uppercase tracking-widest text-slate-400 bg-slate-900/90 border border-slate-800 px-2 py-0.5 rounded-sm">
+            <span className="text-[11px] font-mono uppercase tracking-widest text-theme-muted bg-theme-canvas border border-theme-border px-2 py-0.5 rounded-sm">
               IF511 A
             </span>
           </div>
@@ -397,14 +402,15 @@ export default function DashboardPage() {
 
         {/* Acciones de usuario y salida */}
         <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 bg-[#10141C] border border-[#1A2230] text-xs font-mono rounded-sm">
-            <span className="text-slate-500">OPERADOR:</span>
-            <span className="text-white font-medium">{userName}</span>
+          <ThemeToggle />
+          <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 bg-theme-canvas border border-theme-border text-xs font-mono rounded-sm">
+            <span className="text-theme-muted">OPERADOR:</span>
+            <span className="text-theme-main font-medium">{userName}</span>
           </div>
           <button
             onClick={signOut}
             title="Cerrar sesión"
-            className="p-1.5 border border-[#1A2230] bg-[#10141C] hover:bg-slate-800/80 text-slate-400 hover:text-white transition-colors rounded-sm"
+            className="p-1.5 border border-theme-border bg-theme-canvas hover:bg-theme-card text-theme-muted hover:text-theme-main transition-colors rounded-sm"
           >
             <LogOut size={16} />
           </button>
@@ -427,8 +433,8 @@ export default function DashboardPage() {
             <AlertTriangle size={14} />
             <span>{notice.text}</span>
           </div>
-          <button onClick={() => setNotice(null)} className="text-slate-400 hover:text-white text-xs">
-            ✕
+          <button onClick={() => setNotice(null)} className="text-theme-muted hover:text-theme-main text-xs" title="Cerrar aviso">
+            <X size={14} />
           </button>
         </div>
       )}
@@ -442,33 +448,33 @@ export default function DashboardPage() {
         {/* ======================================================================= */}
         <div className="lg:col-span-3 flex flex-col gap-5">
           {/* Card 1: Enlace Serial COM (Desplegable) */}
-          <div className="bg-[#0D1016] border border-[#1A2230] rounded-sm flex flex-col">
+          <div className="bg-theme-card border border-theme-border rounded-sm flex flex-col shadow-sm">
             <button
               onClick={() => setIsSerialOpen(!isSerialOpen)}
-              className="flex items-center justify-between p-4 hover:bg-[#10141C] transition-colors focus:outline-none"
+              className="flex items-center justify-between p-4 hover:bg-theme-canvas/50 transition-colors focus:outline-none"
             >
               <div className="flex items-center gap-2">
-                <Usb size={16} className={serial.status === "disconnected" ? "text-slate-500" : "text-cyan-400"} />
-                <h2 className="font-mono text-xs font-bold tracking-wider text-slate-200 uppercase">
+                <Usb size={16} className={serial.status === "disconnected" ? "text-theme-muted" : "text-cyan-400"} />
+                <h2 className="font-mono text-xs font-bold tracking-wider text-theme-main uppercase">
                   ENLACE SERIAL
                 </h2>
               </div>
-              <div className="flex items-center gap-3 text-[10px] font-mono text-slate-500">
+              <div className="flex items-center gap-3 text-[10px] font-mono text-theme-muted">
                 <span className="hidden sm:inline">v1 </span>
                 {isSerialOpen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
               </div>
             </button>
 
             {isSerialOpen && (
-              <div className="p-4 pt-0 flex flex-col gap-3 border-t border-[#1A2230] mt-1">
+              <div className="p-4 pt-0 flex flex-col gap-3 border-t border-theme-border mt-1">
                 <div className="grid grid-cols-2 gap-2 text-xs font-mono pt-3">
                   <div>
-                    <label className="text-[11px] text-slate-400 block mb-1">BAUD RATE</label>
+                    <label className="text-[11px] text-theme-muted block mb-1">BAUD RATE</label>
                     <select
                       value={baudRate}
                       onChange={(e) => setBaudRate(e.target.value)}
                       disabled={serial.status !== "disconnected"}
-                      className="w-full bg-[#131720] border border-[#1E2532] text-white px-2 py-1.5 rounded-sm focus:border-cyan-400 outline-none"
+                      className="w-full bg-theme-cardInner border border-theme-border text-theme-main px-2 py-1.5 rounded-sm focus:border-theme-accent outline-none"
                     >
                       <option value="115200">115200 baud</option>
                       <option value="57600">57600 baud</option>
@@ -477,8 +483,8 @@ export default function DashboardPage() {
                   </div>
 
                   <div>
-                    <label className="text-[11px] text-slate-400 block mb-1">CHECKSUM</label>
-                    <div className="bg-[#131720] border border-[#1E2532] text-emerald-400 px-2 py-1.5 rounded-sm flex items-center gap-1.5">
+                    <label className="text-[11px] text-theme-muted block mb-1">CHECKSUM</label>
+                    <div className="bg-theme-cardInner border border-theme-border text-emerald-400 px-2 py-1.5 rounded-sm flex items-center gap-1.5">
                       <CheckCircle2 size={13} />
                       <span className="text-[11px]">CRC-16 OK</span>
                     </div>
@@ -488,7 +494,7 @@ export default function DashboardPage() {
                 {serial.status === "disconnected" ? (
                   <button
                     onClick={connect}
-                    className="w-full py-2 px-3 bg-[#131822] hover:bg-slate-800 border border-[#27344A] text-cyan-300 font-mono text-xs font-bold tracking-wide rounded-sm flex items-center justify-center gap-2 transition-colors"
+                    className="w-full py-2 px-3 bg-theme-cardInner hover:bg-theme-border/50 border border-theme-border text-theme-accent font-mono text-xs font-bold tracking-wide rounded-sm flex items-center justify-center gap-2 transition-colors"
                   >
                     <Usb size={15} />
                     <span>SELECCIONAR PUERTO COM</span>
@@ -496,7 +502,7 @@ export default function DashboardPage() {
                 ) : (
                   <button
                     onClick={() => void serial.disconnect()}
-                    className="w-full py-2 px-3 bg-slate-900 hover:bg-rose-950/60 border border-slate-700 hover:border-rose-700 text-slate-300 hover:text-rose-200 font-mono text-xs font-bold rounded-sm flex items-center justify-center gap-2 transition-colors"
+                    className="w-full py-2 px-3 bg-theme-canvas hover:bg-rose-950/60 border border-theme-border hover:border-rose-700 text-theme-muted hover:text-rose-200 font-mono text-xs font-bold rounded-sm flex items-center justify-center gap-2 transition-colors"
                   >
                     <WifiOff size={15} />
                     <span>DESCONECTAR PUERTO</span>
@@ -504,12 +510,12 @@ export default function DashboardPage() {
                 )}
 
                 {/* Consola de estado del microcontrolador */}
-                <div className="bg-[#08090C] border border-[#161C26] p-2 rounded-sm text-[11px] font-mono mt-1">
-                  <div className="flex items-center justify-between text-slate-500 mb-1">
+                <div className="bg-theme-canvas border border-theme-border p-2 rounded-sm text-[11px] font-mono mt-1">
+                  <div className="flex items-center justify-between text-theme-muted mb-1">
                     <span>CONSOLA ARDUINO</span>
                     <span>LOST: {serial.droppedSamples}</span>
                   </div>
-                  <p className="text-slate-300 truncate" title={serial.lastMessage}>
+                  <p className="text-theme-main truncate" title={serial.lastMessage}>
                     &gt; {serial.lastMessage}
                   </p>
                 </div>
@@ -518,44 +524,44 @@ export default function DashboardPage() {
           </div>
 
           {/* Card 2: Metadatos y Geometría de Probeta */}
-          <form onSubmit={start} className="bg-[#0D1016] border border-[#1A2230] rounded-sm p-4 flex flex-col gap-3">
-            <div className="flex items-center justify-between pb-2 border-b border-[#1A2230]">
+          <form onSubmit={start} className="bg-theme-card border border-theme-border rounded-sm p-4 flex flex-col gap-3 shadow-sm">
+            <div className="flex items-center justify-between pb-2 border-b border-theme-border">
               <div className="flex items-center gap-2">
-                <Layers size={16} className="text-slate-300" />
-                <h2 className="font-mono text-xs font-bold tracking-wider text-slate-200 uppercase">
+                <Layers size={16} className="text-theme-muted" />
+                <h2 className="font-mono text-xs font-bold tracking-wider text-theme-main uppercase">
                   PARÁMETROS DE LA MUESTRA
                 </h2>
               </div>
-              <span className="text-[10px] font-mono text-laser"> FC UNI </span>
+              <span className="text-[10px] font-mono text-theme-accent font-bold"> FC UNI </span>
             </div>
 
             <div className="space-y-2.5 text-xs font-mono">
               <div>
-                <label className="text-[11px] text-slate-400 block mb-1">ID DE PROBETA</label>
+                <label className="text-[11px] text-theme-muted block mb-1">ID DE PROBETA</label>
                 <input
                   required
                   value={setup.specimenId}
                   onChange={(e) => setSetup({ ...setup, specimenId: e.target.value })}
                   placeholder="Ej. PROB-PLA-01"
-                  className="w-full bg-[#131720] border border-[#1E2532] text-white px-2.5 py-1.5 rounded-sm focus:border-laser outline-none"
+                  className="w-full bg-theme-cardInner border border-theme-border text-theme-main px-2.5 py-1.5 rounded-sm focus:border-theme-accent outline-none"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] text-slate-400 block mb-1">MATERIAL POLIMÉRICO</label>
+                <label className="text-[11px] text-theme-muted block mb-1">MATERIAL POLIMÉRICO</label>
                 <input
                   required
                   value={setup.material}
                   onChange={(e) => setSetup({ ...setup, material: e.target.value })}
                   placeholder="Ej. PLA 100% relleno"
-                  className="w-full bg-[#131720] border border-[#1E2532] text-white px-2.5 py-1.5 rounded-sm focus:border-laser outline-none"
+                  className="w-full bg-theme-cardInner border border-theme-border text-theme-main px-2.5 py-1.5 rounded-sm focus:border-theme-accent outline-none"
                 />
               </div>
 
               {/* Dimensiones y Área Automática */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[11px] text-slate-400 block mb-1">ANCHO w [mm]</label>
+                  <label className="text-[11px] text-theme-muted block mb-1">ANCHO w [mm]</label>
                   <input
                     type="number"
                     step="any"
@@ -564,11 +570,11 @@ export default function DashboardPage() {
                     value={setup.widthMm}
                     onChange={(e) => handleDimensionChange("widthMm", e.target.value)}
                     placeholder="4.0"
-                    className="w-full bg-[#131720] border border-[#1E2532] text-white px-2 py-1.5 rounded-sm focus:border-laser outline-none font-mono-numbers"
+                    className="w-full bg-theme-cardInner border border-theme-border text-theme-main px-2 py-1.5 rounded-sm focus:border-theme-accent outline-none font-mono-numbers"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] text-slate-400 block mb-1">ESPESOR t [mm]</label>
+                  <label className="text-[11px] text-theme-muted block mb-1">ESPESOR t [mm]</label>
                   <input
                     type="number"
                     step="any"
@@ -577,14 +583,14 @@ export default function DashboardPage() {
                     value={setup.thicknessMm}
                     onChange={(e) => handleDimensionChange("thicknessMm", e.target.value)}
                     placeholder="4.0"
-                    className="w-full bg-[#131720] border border-[#1E2532] text-white px-2 py-1.5 rounded-sm focus:border-laser outline-none font-mono-numbers"
+                    className="w-full bg-theme-cardInner border border-theme-border text-theme-main px-2 py-1.5 rounded-sm focus:border-theme-accent outline-none font-mono-numbers"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[11px] text-slate-400 block mb-1">ÁREA INICIAL A₀ [mm²]</label>
+                  <label className="text-[11px] text-theme-muted block mb-1">ÁREA INICIAL A₀ [mm²]</label>
                   <input
                     type="number"
                     step="any"
@@ -592,11 +598,11 @@ export default function DashboardPage() {
                     required
                     value={setup.areaMm2}
                     onChange={(e) => setSetup({ ...setup, areaMm2: e.target.value })}
-                    className="w-full bg-[#090C12] border border-[#1E2532] text-laser font-bold px-2 py-1.5 rounded-sm focus:border-laser outline-none font-mono-numbers"
+                    className="w-full bg-theme-canvas border border-theme-border text-theme-telemetry font-bold px-2 py-1.5 rounded-sm focus:border-theme-accent outline-none font-mono-numbers"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] text-slate-400 block mb-1">LONGITUD L₀ [mm]</label>
+                  <label className="text-[11px] text-theme-muted block mb-1">LONGITUD L₀ [mm]</label>
                   <input
                     type="number"
                     step="any"
@@ -605,28 +611,28 @@ export default function DashboardPage() {
                     value={setup.gaugeLengthMm}
                     onChange={(e) => setSetup({ ...setup, gaugeLengthMm: e.target.value })}
                     placeholder="50"
-                    className="w-full bg-[#131720] border border-[#1E2532] text-white px-2 py-1.5 rounded-sm focus:border-laser outline-none font-mono-numbers"
+                    className="w-full bg-theme-cardInner border border-theme-border text-theme-main px-2 py-1.5 rounded-sm focus:border-theme-accent outline-none font-mono-numbers"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-[11px] text-slate-400 block mb-1">PERFIL CALIBRACIÓN APROBADO</label>
+                <label className="text-[11px] text-theme-muted block mb-1">PERFIL CALIBRACIÓN APROBADO</label>
                 <input
                   required
                   value={setup.calibrationProfileId}
                   onChange={(e) => setSetup({ ...setup, calibrationProfileId: e.target.value })}
-                  className="w-full bg-[#131720] border border-[#1E2532] text-slate-300 px-2.5 py-1.5 rounded-sm focus:border-laser outline-none text-[11px]"
+                  className="w-full bg-theme-cardInner border border-theme-border text-theme-muted px-2.5 py-1.5 rounded-sm focus:border-theme-accent outline-none text-[11px]"
                 />
               </div>
             </div>
 
             {/* Mandos de Control Físico */}
-            <div className="pt-2 border-t border-[#1A2230] space-y-2 mt-1">
+            <div className="pt-2 border-t border-theme-border space-y-2 mt-1">
               <button
                 type="submit"
                 disabled={serial.status !== "ready" && serial.status !== "stopped"}
-                className="w-full py-2.5 px-4 rounded-sm btn-laser flex items-center justify-center gap-2 font-mono text-xs uppercase"
+                className="w-full py-2.5 px-4 rounded-sm bg-theme-accent hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center gap-2 font-mono text-xs uppercase font-bold transition-opacity"
               >
                 <Play size={16} className="fill-current" />
                 <span>INICIAR ENSAYO MECÁNICO</span>
@@ -650,18 +656,18 @@ export default function DashboardPage() {
         {/* ======================================================================= */}
         <div className="lg:col-span-9 flex flex-col gap-5">
           {/* Panel de Gráfica: Curva Esfuerzo vs Deformación */}
-          <div className="bg-[#0D1016] border border-[#1A2230] rounded-sm p-4 flex flex-col min-h-[460px]">
-            <div className="flex items-center justify-between pb-3 border-b border-[#1A2230]">
+          <div className="bg-theme-card border border-theme-border rounded-sm p-4 flex flex-col min-h-[460px] shadow-sm">
+            <div className="flex items-center justify-between pb-3 border-b border-theme-border">
               <div className="flex items-center gap-2">
-                <Activity size={17} className="text-laser" />
-                <h2 className="font-mono text-xs font-bold tracking-wider text-slate-100 uppercase">
+                <Activity size={17} className="text-theme-accent" />
+                <h2 className="font-mono text-xs font-bold tracking-wider text-theme-main uppercase">
                   CURVA ESFUERZO σ (MPa) vs DEFORMACIÓN UNITARIA ε (%)
                 </h2>
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-3 font-mono text-xs">
-                  <span className="text-slate-400">
-                    MUESTRAS: <strong className="text-laser font-mono-numbers">{serial.samples.length}</strong>
+                  <span className="text-theme-muted">
+                    MUESTRAS: <strong className="text-theme-telemetry font-mono-numbers">{serial.samples.length}</strong>
                   </span>
                   {serial.droppedSamples > 0 && (
                     <span className="text-amber-400 bg-amber-950/40 border border-amber-800 px-1.5 py-0.5 rounded-sm text-[10px]">
@@ -673,7 +679,7 @@ export default function DashboardPage() {
                   <button
                     onClick={() => downloadCsv(`ensayo-${setup.specimenId || "sin-id"}.csv`, csv)}
                     disabled={!csv || !serial.samples.length}
-                    className="py-1 px-2.5 bg-[#131720] hover:bg-slate-800 border border-[#1E2532] text-slate-300 font-mono text-xs font-semibold rounded-sm flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="py-1 px-2.5 bg-theme-cardInner hover:bg-theme-border/50 border border-theme-border text-theme-main font-mono text-xs font-semibold rounded-sm flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                     title="Descargar matriz numérica cruda para MATLAB / Python / Excel"
                   >
                     <Download size={13} className="text-cyan-400" />
@@ -682,13 +688,13 @@ export default function DashboardPage() {
                   <button
                     onClick={downloadPdf}
                     disabled={!serial.samples.length || exportingPdf}
-                    className="py-1 px-2.5 bg-[#131B2A] hover:bg-slate-800 border border-[#273B5A] text-white font-mono text-xs font-semibold rounded-sm flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="py-1 px-2.5 bg-theme-canvas hover:bg-theme-border/50 border border-theme-border text-theme-main font-mono text-xs font-semibold rounded-sm flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                     title="Generar reporte formal PDF"
                   >
                     {exportingPdf ? (
-                      <Loader2 size={13} className="animate-spin text-laser" />
+                      <Loader2 size={13} className="animate-spin text-theme-accent" />
                     ) : (
-                      <FileText size={13} className="text-laser" />
+                      <FileText size={13} className="text-theme-accent" />
                     )}
                     <span>PDF</span>
                   </button>
@@ -701,21 +707,21 @@ export default function DashboardPage() {
               {serial.samples.length ? (
                 <ResponsiveContainer width="100%" height={380}>
                   <LineChart data={serial.samples} margin={{ top: 10, right: 20, left: 10, bottom: 20 }}>
-                    <CartesianGrid stroke="#1A2230" strokeDasharray="3 3" />
+                    <CartesianGrid stroke={theme === "dark" ? "#2B323B" : "#E2DDD5"} strokeDasharray="3 3" />
                     <XAxis
                       dataKey="strain"
                       type="number"
                       domain={['auto', 'auto']}
                       tickFormatter={(val) => `${(val * 100).toFixed(1)}%`}
-                      stroke="#475569"
+                      stroke={theme === "dark" ? "#8C97A5" : "#64748B"}
                       fontSize={11}
                       fontFamily="var(--font-mono)"
-                      tickLine={{ stroke: '#27344A' }}
+                      tickLine={{ stroke: theme === "dark" ? "#2B323B" : "#E2DDD5" }}
                       label={{
                         value: "Deformación unitaria ε [%]",
                         position: "insideBottom",
                         offset: -12,
-                        fill: "#94A3B8",
+                        fill: theme === "dark" ? "#8C97A5" : "#64748B",
                         fontSize: 11,
                         fontFamily: "var(--font-mono)",
                       }}
@@ -723,27 +729,28 @@ export default function DashboardPage() {
                     <YAxis
                       dataKey="stressMpa"
                       domain={['auto', 'auto']}
-                      stroke="#475569"
+                      stroke={theme === "dark" ? "#8C97A5" : "#64748B"}
                       fontSize={11}
                       fontFamily="var(--font-mono)"
-                      tickLine={{ stroke: '#27344A' }}
+                      tickLine={{ stroke: theme === "dark" ? "#2B323B" : "#E2DDD5" }}
                       label={{
                         value: "Esfuerzo σ [MPa]",
                         angle: -90,
                         position: "insideLeft",
-                        fill: "#94A3B8",
+                        fill: theme === "dark" ? "#8C97A5" : "#64748B",
                         fontSize: 11,
                         fontFamily: "var(--font-mono)",
                       }}
                     />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: "#08090D",
-                        borderColor: "#27344A",
+                        backgroundColor: theme === "dark" ? "#1B2026" : "#FFFFFF",
+                        borderColor: theme === "dark" ? "#2B323B" : "#E2DDD5",
                         borderRadius: "2px",
                         fontFamily: "var(--font-mono)",
                         fontSize: "12px",
-                        boxShadow: "0 10px 25px rgba(0,0,0,0.7)",
+                        color: theme === "dark" ? "#E1E5EA" : "#1E293B",
+                        boxShadow: theme === "dark" ? "0 10px 25px rgba(0,0,0,0.7)" : "0 4px 12px rgba(0,0,0,0.08)",
                       }}
                       formatter={(val: number) => [`${Number(val).toFixed(3)} MPa`, "Esfuerzo σ"]}
                       labelFormatter={(lbl: number) => `Deformación ε: ${(Number(lbl) * 100).toFixed(2)}%`}
@@ -751,7 +758,7 @@ export default function DashboardPage() {
                     <Line
                       type="monotone"
                       dataKey="stressMpa"
-                      stroke="#FF2E93"
+                      stroke={theme === "dark" ? "#6366F1" : "#4F46E5"}
                       strokeWidth={2.5}
                       dot={false}
                       isAnimationActive={false}
@@ -759,14 +766,14 @@ export default function DashboardPage() {
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex flex-col items-center justify-center p-8 border border-dashed border-[#1E2532] w-full h-full rounded-sm text-center">
-                  <div className="w-12 h-12 rounded-full border border-laser/40 bg-laser/10 flex items-center justify-center mb-3">
-                    <Activity size={24} className="text-laser" />
+                <div className="flex flex-col items-center justify-center p-8 border border-dashed border-theme-border w-full h-full rounded-sm text-center">
+                  <div className="w-12 h-12 rounded-full border border-theme-accent/40 bg-theme-accent/10 flex items-center justify-center mb-3">
+                    <Activity size={24} className="text-theme-accent" />
                   </div>
-                  <p className="font-mono text-sm font-semibold text-slate-200 uppercase">
+                  <p className="font-mono text-sm font-semibold text-theme-main uppercase">
                     CANAL DE TELEMETRÍA EN ESPERA
                   </p>
-                  <p className="font-mono text-xs text-slate-500 max-w-sm mt-1">
+                  <p className="font-mono text-xs text-theme-muted max-w-sm mt-1">
                     Conecte el microcontrolador Arduino por Web Serial API y presione &quot;INICIAR ENSAYO&quot; para registrar la curva en vivo.
                   </p>
                 </div>
@@ -777,56 +784,56 @@ export default function DashboardPage() {
           {/* Panel Inferior: 3 Tarjetas de KPI Masivas (Monoespaciadas) */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {/* KPI 1: Fuerza Pico */}
-            <div className="bg-[#0D1016] border border-[#1A2230] p-3.5 rounded-sm flex flex-col justify-between">
-              <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+            <div className="bg-theme-card border border-theme-border p-3.5 rounded-sm flex flex-col justify-between shadow-sm">
+              <div className="flex items-center justify-between text-[11px] font-mono text-theme-muted">
                 <span>FUERZA MÁX (F_max)</span>
-                <span className="text-laser font-bold">100 N LIM</span>
+                <span className="text-theme-accent font-bold">100 N LIM</span>
               </div>
               <div className="my-2">
-                <span className="font-mono text-2xl lg:text-3xl font-bold tracking-tight text-white font-mono-numbers">
+                <span className="font-mono text-2xl lg:text-3xl font-bold tracking-tight text-theme-telemetry font-mono-numbers">
                   {maxForce.toFixed(2)}
                 </span>
-                <span className="text-xs font-mono text-slate-500 ml-1.5">N</span>
+                <span className="text-xs font-mono text-theme-muted ml-1.5">N</span>
               </div>
-              <div className="text-[11px] font-mono text-slate-400 border-t border-[#161C26] pt-1.5 flex justify-between">
+              <div className="text-[11px] font-mono text-theme-muted border-t border-theme-border pt-1.5 flex justify-between">
                 <span>ACTUAL:</span>
-                <span className="text-cyan-400 font-mono-numbers">{lastSample ? lastSample.forceN.toFixed(2) : "0.00"} N</span>
+                <span className="text-theme-telemetry font-mono-numbers">{lastSample ? lastSample.forceN.toFixed(2) : "0.00"} N</span>
               </div>
             </div>
 
             {/* KPI 2: Esfuerzo Máximo */}
-            <div className="bg-[#0D1016] border border-[#1A2230] p-3.5 rounded-sm flex flex-col justify-between">
-              <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+            <div className="bg-theme-card border border-theme-border p-3.5 rounded-sm flex flex-col justify-between shadow-sm">
+              <div className="flex items-center justify-between text-[11px] font-mono text-theme-muted">
                 <span>ESFUERZO MÁX (σ_max)</span>
-                <span className="text-slate-500">σ = F/A₀</span>
+                <span className="text-theme-muted">σ = F/A₀</span>
               </div>
               <div className="my-2">
-                <span className="font-mono text-2xl lg:text-3xl font-bold tracking-tight text-laser font-mono-numbers">
+                <span className="font-mono text-2xl lg:text-3xl font-bold tracking-tight text-theme-telemetry font-mono-numbers">
                   {maxStress.toFixed(3)}
                 </span>
-                <span className="text-xs font-mono text-slate-500 ml-1.5">MPa</span>
+                <span className="text-xs font-mono text-theme-muted ml-1.5">MPa</span>
               </div>
-              <div className="text-[11px] font-mono text-slate-400 border-t border-[#161C26] pt-1.5 flex justify-between">
+              <div className="text-[11px] font-mono text-theme-muted border-t border-theme-border pt-1.5 flex justify-between">
                 <span>ACTUAL:</span>
-                <span className="text-white font-mono-numbers">{lastSample ? lastSample.stressMpa.toFixed(3) : "0.000"} MPa</span>
+                <span className="text-theme-main font-mono-numbers">{lastSample ? lastSample.stressMpa.toFixed(3) : "0.000"} MPa</span>
               </div>
             </div>
 
             {/* KPI 3: Deformación Unitaria Máxima */}
-            <div className="bg-[#0D1016] border border-[#1A2230] p-3.5 rounded-sm flex flex-col justify-between">
-              <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+            <div className="bg-theme-card border border-theme-border p-3.5 rounded-sm flex flex-col justify-between shadow-sm">
+              <div className="flex items-center justify-between text-[11px] font-mono text-theme-muted">
                 <span>DEFORMACIÓN (ε_max)</span>
-                <span className="text-slate-500">ΔL/L₀</span>
+                <span className="text-theme-muted">ΔL/L₀</span>
               </div>
               <div className="my-2">
-                <span className="font-mono text-2xl lg:text-3xl font-bold tracking-tight text-white font-mono-numbers">
+                <span className="font-mono text-2xl lg:text-3xl font-bold tracking-tight text-theme-telemetry font-mono-numbers">
                   {(maxStrain * 100).toFixed(2)}
                 </span>
-                <span className="text-xs font-mono text-slate-500 ml-1.5">%</span>
+                <span className="text-xs font-mono text-theme-muted ml-1.5">%</span>
               </div>
-              <div className="text-[11px] font-mono text-slate-400 border-t border-[#161C26] pt-1.5 flex justify-between">
+              <div className="text-[11px] font-mono text-theme-muted border-t border-theme-border pt-1.5 flex justify-between">
                 <span>DESPLAZAMIENTO:</span>
-                <span className="text-cyan-400 font-mono-numbers">{maxDisp.toFixed(3)} mm</span>
+                <span className="text-theme-telemetry font-mono-numbers">{maxDisp.toFixed(3)} mm</span>
               </div>
             </div>
           </div>
@@ -838,19 +845,20 @@ export default function DashboardPage() {
       {/* ========================================================================= */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4">
         {isAssistantOpen && (
-          <div className="bg-[#0D1016] border border-[#1A2230] rounded-sm p-4 w-[360px] md:w-[420px] shadow-2xl flex flex-col min-h-[460px] max-h-[70vh] animate-in slide-in-from-bottom-5">
-            <div className="flex items-center justify-between pb-2 border-b border-[#1A2230]">
+          <div className="bg-theme-card border border-theme-border rounded-sm p-4 w-[360px] md:w-[420px] shadow-2xl flex flex-col min-h-[460px] max-h-[70vh] animate-in slide-in-from-bottom-5">
+            <div className="flex items-center justify-between pb-2 border-b border-theme-border">
               <div className="flex items-center gap-2">
-                <Bot size={16} className="text-laser" />
-                <h2 className="font-mono text-xs font-bold tracking-wider text-slate-200 uppercase">
-                  ASISTENTE VIRTUAL DE UTM LAB
+                <Bot size={16} className="text-theme-accent" />
+                <h2 className="font-mono text-xs font-bold tracking-wider text-theme-main uppercase">
+                  ASISTENTE VIRTUAL DE UTMachine LAB
                 </h2>
               </div>
               <button
                 onClick={() => setIsAssistantOpen(false)}
-                className="text-slate-500 hover:text-white"
+                className="text-theme-muted hover:text-theme-main"
+                title="Cerrar asistente"
               >
-                ✕
+                <X size={14} />
               </button>
             </div>
 
@@ -858,31 +866,31 @@ export default function DashboardPage() {
             <div className="flex gap-1.5 py-2 overflow-x-auto text-[10px] font-mono no-scrollbar">
               <button
                 onClick={() => submitAssistant("Diagnostica el estado actual del ensayo y sus lecturas.")}
-                className="whitespace-nowrap px-2 py-0.5 bg-[#131720] hover:bg-slate-800 border border-[#1E2532] text-slate-300 rounded-sm"
+                className="whitespace-nowrap px-2 py-0.5 bg-theme-cardInner hover:bg-theme-border/50 border border-theme-border text-theme-muted hover:text-theme-main rounded-sm"
               >
                 DIAGNÓSTICO
               </button>
               <button
                 onClick={() => submitAssistant("¿Cuáles son los parámetros típicos según la norma ASTM D638 para probetas de PLA?")}
-                className="whitespace-nowrap px-2 py-0.5 bg-[#131720] hover:bg-slate-800 border border-[#1E2532] text-slate-300 rounded-sm"
+                className="whitespace-nowrap px-2 py-0.5 bg-theme-cardInner hover:bg-theme-border/50 border border-theme-border text-theme-muted hover:text-theme-main rounded-sm"
               >
                 NORMA D638
               </button>
               <button
                 onClick={() => submitAssistant("Explica cómo interpretar la zona elástica y el punto de fluencia en este ensayo.")}
-                className="whitespace-nowrap px-2 py-0.5 bg-[#131720] hover:bg-slate-800 border border-[#1E2532] text-slate-300 rounded-sm"
+                className="whitespace-nowrap px-2 py-0.5 bg-theme-cardInner hover:bg-theme-border/50 border border-theme-border text-theme-muted hover:text-theme-main rounded-sm"
               >
                 ZONA ELÁSTICA
               </button>
               <button
                 onClick={() => submitAssistant("¿Cómo calculo el módulo de Young (E) con los datos adquiridos?")}
-                className="whitespace-nowrap px-2 py-0.5 bg-[#131720] hover:bg-slate-800 border border-[#1E2532] text-slate-300 rounded-sm"
+                className="whitespace-nowrap px-2 py-0.5 bg-theme-cardInner hover:bg-theme-border/50 border border-theme-border text-theme-muted hover:text-theme-main rounded-sm"
               >
                 MÓDULO YOUNG
               </button>
               <button
                 onClick={() => submitAssistant("Explica cómo conectar el microcontrolador y diagnosticar el puerto COM.")}
-                className="whitespace-nowrap px-2 py-0.5 bg-[#131720] hover:bg-slate-800 border border-[#1E2532] text-slate-300 rounded-sm"
+                className="whitespace-nowrap px-2 py-0.5 bg-theme-cardInner hover:bg-theme-border/50 border border-theme-border text-theme-muted hover:text-theme-main rounded-sm"
               >
                 ENLACE SERIAL
               </button>
@@ -891,29 +899,29 @@ export default function DashboardPage() {
             {/* Ventana de mensajes de terminal */}
             <div
               ref={chatScrollRef}
-              className="flex-1 overflow-y-auto space-y-2.5 p-2 bg-[#080A0E] border border-[#161C26] rounded-sm font-mono text-xs"
+              className="flex-1 overflow-y-auto space-y-2.5 p-2 bg-theme-canvas border border-theme-border rounded-sm font-mono text-xs"
             >
               {chatMessages.map((msg, idx) => (
                 <div
                   key={idx}
                   className={`p-2 rounded-sm border leading-relaxed ${msg.role === "user"
-                    ? "bg-[#141B26] border-[#222E42] text-slate-100 ml-4"
-                    : "bg-[#0E131C] border-[#18212F] text-slate-300 mr-2"
+                    ? "bg-theme-cardInner border-theme-border text-theme-main ml-4"
+                    : "bg-theme-card border-theme-border text-theme-main mr-2"
                     }`}
                 >
-                  <div className="flex items-center justify-between text-[10px] text-slate-500 mb-1 border-b border-[#1A2230]/60 pb-0.5">
-                    <span className={msg.role === "user" ? "text-cyan-400" : "text-laser font-bold"}>
+                  <div className="flex items-center justify-between text-[10px] text-theme-muted mb-1 border-b border-theme-border/60 pb-0.5">
+                    <span className={msg.role === "user" ? "text-theme-telemetry" : "text-theme-accent font-bold"}>
                       {msg.role === "user" ? "OPERADOR" : "GEMINI·COPILOT"}
                     </span>
                     <span>{msg.time}</span>
                   </div>
-                  <div className="text-slate-200">
+                  <div className="text-theme-main">
                     <FormattedMessage text={msg.text} />
                   </div>
                 </div>
               ))}
               {chatLoading && (
-                <div className="flex items-center gap-2 text-laser text-[11px] p-2 font-mono">
+                <div className="flex items-center gap-2 text-theme-accent text-[11px] p-2 font-mono">
                   <Loader2 size={13} className="animate-spin" />
                   <span>CONSULTANDO...</span>
                 </div>
@@ -932,12 +940,12 @@ export default function DashboardPage() {
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 placeholder="Consulte a Gemini sobre el ensayo..."
-                className="flex-1 bg-[#131720] border border-[#1E2532] text-white text-xs px-2.5 py-1.5 rounded-sm focus:border-laser outline-none font-mono"
+                className="flex-1 bg-theme-cardInner border border-theme-border text-theme-main text-xs px-2.5 py-1.5 rounded-sm focus:border-theme-accent outline-none font-mono"
               />
               <button
                 type="submit"
                 disabled={chatLoading || !chatInput.trim()}
-                className="px-3 bg-laser hover:bg-[#ff4d9f] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold rounded-sm flex items-center justify-center transition-colors"
+                className="px-3 bg-theme-accent hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold rounded-sm flex items-center justify-center transition-opacity"
                 title="Enviar consulta técnica"
               >
                 <Send size={13} />
@@ -948,7 +956,7 @@ export default function DashboardPage() {
 
         <button
           onClick={() => setIsAssistantOpen(!isAssistantOpen)}
-          className="w-14 h-14 bg-laser hover:bg-[#ff4d9f] rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(255,46,147,0.3)] transition-all hover:scale-105 active:scale-95"
+          className="w-14 h-14 bg-theme-accent hover:opacity-90 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-105 active:scale-95 text-white"
           title="Abrir Asistente Gemini"
         >
           {isAssistantOpen ? <Minimize2 size={24} className="text-white" /> : <Bot size={28} className="text-white" />}
