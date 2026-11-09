@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 import type { EmailOtpType } from "@supabase/supabase-js";
+import { UtmLogo } from "@/components/utm-logo";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -109,29 +110,32 @@ export default function AuthCallbackPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#07080A] text-slate-100 p-6 font-mono text-xs">
-      <div className="max-w-md w-full bg-[#0D1016] border border-[#1A2230] p-6 rounded-sm shadow-2xl text-center space-y-4">
+    <div className="min-h-screen flex items-center justify-center bg-theme-canvas text-theme-main p-6 font-mono text-xs transition-colors">
+      <div className="max-w-md w-full bg-theme-card border border-theme-border p-6 rounded-sm shadow-xl text-center space-y-4">
+        <div className="flex justify-center pt-2">
+          <UtmLogo size={42} className="text-theme-accent" />
+        </div>
         {status === "loading" && (
           <div className="flex flex-col items-center gap-3 py-4">
-            <Loader2 size={24} className="animate-spin text-laser" />
-            <p className="text-slate-300">{message}</p>
+            <Loader2 size={24} className="animate-spin text-theme-accent" />
+            <p className="text-theme-muted">{message}</p>
           </div>
         )}
 
         {status === "success" && (
           <div className="flex flex-col items-center gap-3 py-4">
-            <CheckCircle2 size={32} className="text-emerald-400" />
-            <p className="text-emerald-300 font-semibold text-sm">{message}</p>
+            <CheckCircle2 size={32} className="text-emerald-500" />
+            <p className="text-emerald-500 font-semibold text-sm">{message}</p>
           </div>
         )}
 
         {status === "error" && (
           <div className="flex flex-col items-center gap-3 py-2">
-            <AlertCircle size={32} className="text-rose-400" />
-            <p className="text-rose-300 leading-relaxed">{message}</p>
+            <AlertCircle size={32} className="text-rose-500" />
+            <p className="text-rose-400 leading-relaxed">{message}</p>
             <Link
               href="/"
-              className="mt-3 inline-block px-4 py-2 bg-[#131720] border border-[#1E2532] text-slate-300 hover:text-white rounded-sm uppercase tracking-wider text-[11px]"
+              className="mt-3 inline-block px-4 py-2 bg-theme-cardInner border border-theme-border text-theme-muted hover:text-theme-main rounded-sm uppercase tracking-wider text-[11px]"
             >
               Volver al Inicio de Sesion
             </Link>

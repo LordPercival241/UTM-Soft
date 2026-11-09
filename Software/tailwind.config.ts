@@ -9,28 +9,26 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        lab: {
-          bg: "#08090C",
-          surface: "#0E1117",
-          panel: "#131720",
-          card: "#171C26",
-          border: "#1E2532",
-          borderBright: "#2D3748",
-          text: "#F8FAFC",
-          muted: "#94A3B8",
-          dim: "#64748B",
+        theme: {
+          canvas: "var(--color-canvas)",
+          card: "var(--color-card)",
+          cardElevated: "var(--color-card-elevated)",
+          cardInner: "var(--color-card-inner)",
+          border: "var(--color-border)",
+          borderSubtle: "var(--color-border-subtle)",
+          main: "var(--color-text-main)",
+          muted: "var(--color-text-muted)",
+          dim: "var(--color-text-dim)",
+          accent: "var(--color-accent)",
+          accentHover: "var(--color-accent-hover)",
+          telemetry: "var(--color-telemetry)",
+          chart: "var(--color-chart)",
         },
         laser: {
-          DEFAULT: "#ec0d79ff",
-          dark: "#91104eff",
-          hover: "#FF4D9F",
-          glow: "rgba(255, 46, 147, 0.25)",
-        },
-        cyber: {
-          cyan: "#157981ff",
-          emerald: "#64b910ff",
-          amber: "#e99d1bff",
-          rose: "#c62943ff",
+          DEFAULT: "var(--color-accent)",
+          dark: "var(--color-accent-active)",
+          hover: "var(--color-accent-hover)",
+          glow: "var(--color-accent-glow)",
         },
       },
       fontFamily: {
