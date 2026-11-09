@@ -16,7 +16,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "UTMachine Lab — Suite Metrologica de Ensayos Mecanicos",
+  title: "UTMachine Lab ",
   description: "Adquisicion en tiempo real, trazabilidad serial v1 y caracterizacion de probetas polimericas.",
   icons: {
     icon: "/favicon.ico",
