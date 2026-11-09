@@ -195,7 +195,7 @@ export default function HomePage() {
             UTMachine<span className="text-theme-accent">·</span>LAB
           </Link>
           <span className="text-[11px] font-mono uppercase tracking-widest text-theme-muted bg-theme-cardInner border border-theme-border px-2 py-0.5 rounded-sm">
-            IF511A Proyecto de Instrumentacion Electronica
+            IF511A Instrumentación Electrónica
           </span>
         </div>
 
@@ -219,16 +219,16 @@ export default function HomePage() {
               </div>
               <div className="inline-flex items-center gap-2 px-2.5 py-1 bg-theme-card border border-theme-border text-xs font-mono text-theme-accent rounded-sm">
                 <Activity size={14} />
-                <span>Maquina Universal de Ensayos de Fuerza de Bajo Costo</span>
+                <span>Máquina Universal de Ensayos de Fuerza</span>
               </div>
             </div>
 
             <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-theme-main leading-tight font-sans">
-              Adquisicion de datos en <span className="text-theme-accent">tiempo real</span>.
+              Adquisición de datos en <span className="text-theme-accent">tiempo real</span>.
             </h1>
 
             <p className="text-theme-muted text-sm sm:text-base leading-relaxed max-w-xl font-sans">
-              Plataforma de adquisicion serial en tiempo real para probetas polimericas. Curvas continuas de esfuerzo frente a deformacion, calculo de rigidez y reportes certificados.
+              Plataforma de adquisición serial en tiempo real para probetas poliméricas. Curvas continuas de esfuerzo frente a deformación, cálculo de rigidez y reportes certificados.
             </p>
 
             {/* Technical Spec Matrix */}
@@ -281,11 +281,10 @@ export default function HomePage() {
                   setError(null);
                   setSuccess(null);
                 }}
-                className={`py-2 px-3 text-center transition-all rounded-sm font-semibold ${
-                  tab === "login"
-                    ? "bg-theme-card text-theme-accent border border-theme-accent/40 shadow-sm"
-                    : "text-theme-muted hover:text-theme-main"
-                }`}
+                className={`py-2 px-3 text-center transition-all rounded-sm font-semibold ${tab === "login"
+                  ? "bg-theme-card text-theme-accent border border-theme-accent/40 shadow-sm"
+                  : "text-theme-muted hover:text-theme-main"
+                  }`}
               >
                 INICIAR SESION
               </button>
@@ -296,11 +295,10 @@ export default function HomePage() {
                   setError(null);
                   setSuccess(null);
                 }}
-                className={`py-2 px-3 text-center transition-all rounded-sm font-semibold ${
-                  tab === "register"
-                    ? "bg-theme-card text-theme-accent border border-theme-accent/40 shadow-sm"
-                    : "text-theme-muted hover:text-theme-main"
-                }`}
+                className={`py-2 px-3 text-center transition-all rounded-sm font-semibold ${tab === "register"
+                  ? "bg-theme-card text-theme-accent border border-theme-accent/40 shadow-sm"
+                  : "text-theme-muted hover:text-theme-main"
+                  }`}
               >
                 CREAR CUENTA
               </button>
@@ -376,7 +374,7 @@ export default function HomePage() {
                       type="text"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      placeholder="Dante Olivas"
+                      placeholder="Usuario1"
                       className="w-full bg-theme-cardInner border border-theme-border text-theme-main pl-9 pr-3 py-2 rounded-sm focus:border-theme-accent outline-none"
                     />
                     <User size={15} className="absolute left-3 top-2.5 text-theme-dim" />
@@ -394,7 +392,7 @@ export default function HomePage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="operador@gmail.com o usuario@uni.edu.pe"
+                    placeholder="Usuario_1@gmail.com"
                     className="w-full bg-theme-cardInner border border-theme-border text-theme-main pl-9 pr-3 py-2 rounded-sm focus:border-theme-accent outline-none"
                   />
                   <Mail size={15} className="absolute left-3 top-2.5 text-theme-dim" />
@@ -459,7 +457,7 @@ export default function HomePage() {
       <footer className="border-t border-theme-border bg-theme-canvas px-6 py-8 mt-auto">
         <div className="max-w-6xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
           <div className="flex flex-col gap-1 text-xs font-mono text-theme-muted">
-            <span className="text-theme-dim font-semibold mb-1 uppercase tracking-widest text-[10px]">EQUIPO DE DESARROLLO E INVESTIGACION</span>
+            <span className="text-theme-dim font-semibold mb-1 uppercase tracking-widest text-[10px]">EQUIPO DE DESARROLLO E INVESTIGACIÓN</span>
             <div className="flex gap-4">
               <div className="flex flex-col">
                 <span className="text-theme-main font-medium">Dante Olivas</span>
