@@ -148,11 +148,11 @@ export default function DashboardPage() {
   const [isSerialOpen, setIsSerialOpen] = useState(false);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
 
-  // Estado del Asistente Gemini
+  // Estado del Asistente YoungBot
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
-      text: "Hola, soy el asistente técnico de UTM Lab. Puedo orientarte sobre normas de ensayo (ASTM D638), interpretar la curva esfuerzo-deformación, calcular el módulo elástico o diagnosticar la telemetría en tiempo real.",
+      text: "Hola, soy YoungBot, tu asistente técnico y metrológico de UTMachine Lab. Puedo orientarte sobre normas de ensayo (ASTM D638 / ISO 527), interpretar la curva esfuerzo-deformación, calcular el módulo elástico o diagnosticar la telemetría en tiempo real. ¿En qué puedo asistirte hoy?",
       time: "INIT",
     },
   ]);
@@ -344,7 +344,7 @@ export default function DashboardPage() {
         ...prev,
         {
           role: "assistant",
-          text: caught instanceof Error ? caught.message : "Error de comunicación con Gemini API.",
+          text: caught instanceof Error ? caught.message : "Error de comunicación con el asistente YoungBot.",
           time: now,
         },
       ]);
@@ -841,7 +841,7 @@ export default function DashboardPage() {
       </main>
 
       {/* ========================================================================= */}
-      {/* FLOATING ASSISTANT GEMINI                                               */}
+      {/* FLOATING ASSISTANT YOUNGBOT                                               */}
       {/* ========================================================================= */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4">
         {isAssistantOpen && (
@@ -850,13 +850,13 @@ export default function DashboardPage() {
               <div className="flex items-center gap-2">
                 <Bot size={16} className="text-theme-accent" />
                 <h2 className="font-mono text-xs font-bold tracking-wider text-theme-main uppercase">
-                  ASISTENTE VIRTUAL DE UTMachine LAB
+                  YOUNGBOT · ASISTENTE METROLÓGICO
                 </h2>
               </div>
               <button
                 onClick={() => setIsAssistantOpen(false)}
                 className="text-theme-muted hover:text-theme-main"
-                title="Cerrar asistente"
+                title="Cerrar asistente YoungBot"
               >
                 <X size={14} />
               </button>
@@ -911,7 +911,7 @@ export default function DashboardPage() {
                 >
                   <div className="flex items-center justify-between text-[10px] text-theme-muted mb-1 border-b border-theme-border/60 pb-0.5">
                     <span className={msg.role === "user" ? "text-theme-telemetry" : "text-theme-accent font-bold"}>
-                      {msg.role === "user" ? "OPERADOR" : "GEMINI·COPILOT"}
+                      {msg.role === "user" ? "OPERADOR" : "YoungBot"}
                     </span>
                     <span>{msg.time}</span>
                   </div>
@@ -923,12 +923,12 @@ export default function DashboardPage() {
               {chatLoading && (
                 <div className="flex items-center gap-2 text-theme-accent text-[11px] p-2 font-mono">
                   <Loader2 size={13} className="animate-spin" />
-                  <span>CONSULTANDO...</span>
+                  <span>YOUNGBOT ANALIZANDO...</span>
                 </div>
               )}
             </div>
 
-            {/* Formulario de consulta a Gemini */}
+            {/* Formulario de consulta a YoungBot */}
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -939,14 +939,14 @@ export default function DashboardPage() {
               <input
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
-                placeholder="Consulte a Gemini sobre el ensayo..."
+                placeholder="Consulte a YoungBot sobre el ensayo o telemetría..."
                 className="flex-1 bg-theme-cardInner border border-theme-border text-theme-main text-xs px-2.5 py-1.5 rounded-sm focus:border-theme-accent outline-none font-mono"
               />
               <button
                 type="submit"
                 disabled={chatLoading || !chatInput.trim()}
                 className="px-3 bg-theme-accent hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold rounded-sm flex items-center justify-center transition-opacity"
-                title="Enviar consulta técnica"
+                title="Enviar consulta técnica a YoungBot"
               >
                 <Send size={13} />
               </button>
@@ -957,7 +957,7 @@ export default function DashboardPage() {
         <button
           onClick={() => setIsAssistantOpen(!isAssistantOpen)}
           className="w-14 h-14 bg-theme-accent hover:opacity-90 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-105 active:scale-95 text-white"
-          title="Abrir Asistente Gemini"
+          title="Abrir Asistente YoungBot"
         >
           {isAssistantOpen ? <Minimize2 size={24} className="text-white" /> : <Bot size={28} className="text-white" />}
         </button>

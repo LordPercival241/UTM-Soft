@@ -37,9 +37,12 @@ const requestSchema = z.object({
 
 type RequestContext = z.infer<typeof requestSchema>["context"];
 
-const instructions = `Eres el Asistente Técnico y Metrológico de UTMachine Lab, una plataforma avanzada para Máquinas Universales de Ensayos Mecánicos de Tracción (bajo costo, diseñada para caracterización de polímeros con celda de carga de 10 kg / 100 N y microcontrolador Arduino Uno/Nano o ESP32 DevKit).
+const instructions = `Eres YoungBot, el Asistente Técnico y Metrológico de UTMachine Lab, una plataforma avanzada para Máquinas Universales de Ensayos Mecánicos de Tracción (diseñada para caracterización de polímeros y materiales con celda de carga de 10 kg / 100 N y microcontrolador ESP32 DevKit).
 
-Tu misión es guiar al operador con rigor técnico, precisión física y claridad metrológica.
+IDENTIDAD Y CONFIDENCIALIDAD ESTRICTA (CRÍTICO):
+- Tu nombre es estricta y únicamente YoungBot.
+- NUNCA menciones que eres Gemini, Google, OpenAI o ningún modelo de lenguaje externo. Si el operador te pregunta quién eres o cuál es tu origen, responde siempre: "Soy YoungBot, el copiloto técnico y metrológico de UTMachine Lab."
+- Tu misión es guiar al operador con rigor técnico, precisión física y claridad metrológica.
 
 ÁREAS DE ESPECIALIDAD Y CONOCIMIENTO:
 1. CIENCIA E INGENIERÍA DE MATERIALES:
@@ -113,12 +116,102 @@ function buildContextString(context?: RequestContext): string {
   return lines.join("\n");
 }
 
-export async function POST(request: NextRequest) {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_KEY;
-  let rawModel = (process.env.GEMINI_MODEL || "gemini-2.5-flash").trim();
-  if (rawModel === "gemini-flash") {
-    rawModel = "gemini-2.5-flash";
+// Descubrimiento dinámico de modelos autorizados para la API key provista
+async function discoverModels(key: string): Promise<string[]> {
+  for (const apiVer of ["v1beta", "v1"] as const) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/${apiVer}/models?key=${encodeURIComponent(key)}`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+      if (!res.ok) continue;
+      const data = (await res.json()) as {
+        models?: Array<{ name: string; supportedGenerationMethods?: string[] }>;
+      };
+      if (data.models && Array.isArray(data.models)) {
+        return data.models
+          .filter((m) => m.supportedGenerationMethods?.includes("generateContent"))
+          .map((m) => m.name.replace(/^models\//, ""));
+      }
+    } catch {
+      // Ignorar fallo de red puntual y continuar
+    }
   }
+  return [];
+}
+
+// Ejecutor de generación de contenido con tolerancia de endpoints (v1beta y v1)
+async function requestGenerateContent(
+  key: string,
+  modelName: string,
+  turns: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }>
+): Promise<{ ok: boolean; status: number; text: string; data?: unknown }> {
+  const cleanModel = modelName.replace(/^models\//, "").trim();
+  const attempts = [
+    { ver: "v1beta", withSys: true },
+    { ver: "v1", withSys: true },
+    { ver: "v1", withSys: false },
+  ];
+
+  let lastStatus = 404;
+  let lastText = "";
+
+  for (const { ver, withSys } of attempts) {
+    const url = `https://generativelanguage.googleapis.com/${ver}/models/${encodeURIComponent(cleanModel)}:generateContent?key=${encodeURIComponent(key)}`;
+    try {
+      const payload: Record<string, unknown> = {
+        contents: turns,
+        generationConfig: {
+          temperature: 0.35,
+          maxOutputTokens: 2048,
+          topP: 0.95,
+        },
+      };
+
+      if (withSys) {
+        payload.system_instruction = {
+          parts: [{ text: instructions }],
+        };
+      }
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(25000),
+        body: JSON.stringify(payload),
+      });
+
+      lastStatus = res.status;
+      lastText = await res.text();
+
+      if (res.ok) {
+        try {
+          const json = JSON.parse(lastText);
+          return { ok: true, status: res.status, text: lastText, data: json };
+        } catch {
+          // Si falló el parseo JSON, continuar
+        }
+      }
+
+      // Si es un error definitivo de credenciales o cuota, no iterar variantes
+      if (res.status === 401 || res.status === 403 || res.status === 429) {
+        return { ok: false, status: res.status, text: lastText };
+      }
+    } catch (err) {
+      lastText = err instanceof Error ? err.message : "Error de comunicación";
+    }
+  }
+
+  return { ok: false, status: lastStatus, text: lastText };
+}
+
+export async function POST(request: NextRequest) {
+  const apiKey =
+    process.env.YOUNGBOT_API_KEY ||
+    process.env.AI_API_KEY ||
+    process.env.GEMINI_API_KEY ||
+    process.env.GOOGLE_API_KEY ||
+    process.env.GEMINI_KEY;
+
+  const configuredModel = (process.env.YOUNGBOT_MODEL || process.env.GEMINI_MODEL || "").trim();
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -126,18 +219,18 @@ export async function POST(request: NextRequest) {
 
   if (!apiKey) {
     return NextResponse.json(
-      { error: "Falta configurar GEMINI_API_KEY en las variables de entorno de Vercel / .env.local." },
+      { error: "Falta configurar la clave de API del asistente en las variables de entorno de Vercel (GEMINI_API_KEY o AI_API_KEY)." },
       { status: 503 }
     );
   }
   if (!supabaseUrl || !supabaseKey) {
     return NextResponse.json(
-      { error: "Faltan las variables de Supabase en el servidor." },
+      { error: "Faltan las variables de conexión a la base de datos en el servidor." },
       { status: 503 }
     );
   }
   if (!token) {
-    return NextResponse.json({ error: "Se requiere una sesión válida de operador." }, { status: 401 });
+    return NextResponse.json({ error: "Se requiere una sesión válida de operador para consultar a YoungBot." }, { status: 401 });
   }
 
   const authClient = createClient(supabaseUrl, supabaseKey, {
@@ -146,7 +239,7 @@ export async function POST(request: NextRequest) {
   const { data: authData, error: authError } = await authClient.auth.getUser(token);
   if (authError || !authData.user) {
     return NextResponse.json(
-      { error: `Sesión no válida o expirada (${authError?.message || "inicie sesión nuevamente"}).` },
+      { error: `Sesión de operador expirada (${authError?.message || "inicie sesión nuevamente"}).` },
       { status: 401 }
     );
   }
@@ -165,7 +258,7 @@ export async function POST(request: NextRequest) {
   }
   const { message, history, context } = parsed.data;
 
-  // Construir historial multi-turno compatible con el protocolo Gemini API
+  // Construir historial multi-turno estructurado
   const rawTurns: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = [];
 
   if (history && history.length > 0) {
@@ -189,101 +282,102 @@ export async function POST(request: NextRequest) {
     parts: [{ text: currentTurnText }],
   });
 
-  // Sanitizar turnos: Gemini exige que los turnos comiencen con "user" y alternen estrictamente entre "user" y "model"
+  // Sanitizar turnos: deben comenzar con "user" y alternar estrictamente
   const sanitizedTurns: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = [];
   for (const turn of rawTurns) {
     if (sanitizedTurns.length > 0 && sanitizedTurns[sanitizedTurns.length - 1].role === turn.role) {
-      // Concatenar turnos consecutivos del mismo rol
       sanitizedTurns[sanitizedTurns.length - 1].parts[0].text += `\n\n${turn.parts[0].text}`;
     } else {
       sanitizedTurns.push(turn);
     }
   }
 
-  // Si el primer turno quedó como "model", removerlo para iniciar siempre en "user"
   if (sanitizedTurns.length > 0 && sanitizedTurns[0].role === "model") {
     sanitizedTurns.shift();
   }
 
-  const makeGeminiRequest = async (modelToUse: string) => {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelToUse)}:generateContent?key=${encodeURIComponent(apiKey)}`;
-    return fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(25000),
-      body: JSON.stringify({
-        system_instruction: {
-          parts: [{ text: instructions }],
-        },
-        contents: sanitizedTurns,
-        generationConfig: {
-          temperature: 0.35,
-          maxOutputTokens: 2048,
-          topP: 0.95,
-        },
-      }),
-    });
-  };
+  // Lista prioritaria de modelos compatibles actuales
+  const initialCandidates = [
+    configuredModel,
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-latest",
+    "gemini-1.5-flash-002",
+    "gemini-1.5-flash-001",
+    "gemini-1.5-flash-8b",
+    "gemini-2.0-flash-lite",
+    "gemini-1.5-pro",
+    "gemini-1.5-pro-latest",
+  ].filter(Boolean);
 
-  // Cascada de modelos candidatos para garantizar respuesta ante fallos de disponibilidad regional
-  const candidateModels = [rawModel, "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
-  const uniqueModels = Array.from(new Set(candidateModels.filter(Boolean)));
+  const candidateModels = Array.from(new Set(initialCandidates));
 
-  let response: Response | null = null;
-  let lastErrorText = "";
-  let usedModel = "";
+  let lastResult: { ok: boolean; status: number; text: string; data?: unknown } | null = null;
+  let successfulModel = "";
 
-  for (const candidate of uniqueModels) {
-    try {
-      usedModel = candidate;
-      response = await makeGeminiRequest(candidate);
-      if (response.ok) {
-        break;
-      }
-      lastErrorText = await response.text();
-      console.warn(`[api/assistant] Modelo ${candidate} retornó status ${response.status}:`, lastErrorText);
-
-      // Si el modelo da 404 (no existe o no habilitado en la API key) o 400 (parámetro no admitido en versión), probar el siguiente
-      if (response.status === 404 || response.status === 400) {
-        continue;
-      }
-
-      // Si es 401/403 (clave inválida) o 429 (cuota de cuenta), no tiene sentido reintentar otros modelos
+  for (const model of candidateModels) {
+    const res = await requestGenerateContent(apiKey, model, sanitizedTurns);
+    if (res.ok) {
+      lastResult = res;
+      successfulModel = model;
       break;
-    } catch (err) {
-      lastErrorText = err instanceof Error ? err.message : "Error de comunicación";
-      console.error(`[api/assistant] Error con modelo ${candidate}:`, lastErrorText);
+    }
+    lastResult = res;
+
+    // Si es error de credenciales o de cuota, no seguir probando otros modelos
+    if (res.status === 401 || res.status === 403 || res.status === 429) {
+      break;
     }
   }
 
-  if (!response) {
+  // Si todos los modelos estáticos fallaron con 404/400, intentar autodescubrimiento con ListModels
+  if (!lastResult?.ok && (lastResult?.status === 404 || lastResult?.status === 400)) {
+    const discovered = await discoverModels(apiKey);
+    for (const discModel of discovered) {
+      if (candidateModels.includes(discModel)) continue;
+      const res = await requestGenerateContent(apiKey, discModel, sanitizedTurns);
+      if (res.ok) {
+        lastResult = res;
+        successfulModel = discModel;
+        break;
+      }
+      lastResult = res;
+      if (res.status === 401 || res.status === 403 || res.status === 429) {
+        break;
+      }
+    }
+  }
+
+  if (!lastResult) {
     return NextResponse.json(
-      { error: `No fue posible conectar con los modelos de Gemini. Detalle: ${lastErrorText}` },
+      { error: "No fue posible iniciar la comunicación con YoungBot." },
       { status: 502 }
     );
   }
 
-  if (!response.ok) {
-    if (response.status === 401 || response.status === 403) {
+  if (!lastResult.ok) {
+    if (lastResult.status === 401 || lastResult.status === 403) {
       return NextResponse.json(
-        { error: "GEMINI_API_KEY no autorizada o inválida. Verifique la clave en Google AI Studio y en las variables de entorno." },
+        { error: "Clave de API del asistente no autorizada o inválida. Verifique que la clave obtenida en Google AI Studio (aistudio.google.com) esté correctamente copiada en las variables de entorno de Vercel." },
         { status: 502 }
       );
     }
-    if (response.status === 429) {
+    if (lastResult.status === 429) {
       return NextResponse.json(
-        { error: "Límite de cuota de Gemini alcanzado (Rate limit / Quota exceeded). Espere un momento antes de consultar nuevamente." },
+        { error: "Límite de cuota de YoungBot alcanzado temporalmente. Por favor, espere un momento antes de volver a consultar." },
         { status: 429 }
       );
     }
     return NextResponse.json(
-      { error: `Gemini API devolvió error (${response.status}): ${lastErrorText.slice(0, 300)}` },
+      {
+        error: `YoungBot no pudo procesar la solicitud (Código ${lastResult.status}): ${lastResult.text.slice(0, 250)}. Verifique que su API Key en Google AI Studio (aistudio.google.com) tenga habilitada la API Generative Language.`,
+      },
       { status: 502 }
     );
   }
 
   try {
-    const result = (await response.json()) as {
+    const result = lastResult.data as {
       candidates?: Array<{
         content?: {
           parts?: Array<{ text?: string }>;
@@ -296,22 +390,22 @@ export async function POST(request: NextRequest) {
 
     if (result.promptFeedback?.blockReason) {
       return NextResponse.json({
-        answer: `La consulta fue restringida por los filtros de seguridad de Gemini (${result.promptFeedback.blockReason}).`,
+        answer: `La consulta técnica fue restringida por los filtros de seguridad del sistema (${result.promptFeedback.blockReason}).`,
       });
     }
 
     const answer = result.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!answer) {
       return NextResponse.json({
-        answer: "El asistente no generó texto de respuesta. Intente reformular su consulta.",
+        answer: "YoungBot no generó texto de respuesta para esta consulta. Intente reformular su pregunta técnica.",
       });
     }
 
-    return NextResponse.json({ answer, model: usedModel });
+    return NextResponse.json({ answer, model: successfulModel });
   } catch (caught) {
     const isTimeout = caught instanceof Error && caught.name === "TimeoutError";
     return NextResponse.json(
-      { error: isTimeout ? "Tiempo de espera agotado al consultar a Gemini." : "Error al procesar la respuesta de Gemini." },
+      { error: isTimeout ? "Tiempo de espera agotado al consultar a YoungBot." : "Error al procesar la respuesta de YoungBot." },
       { status: isTimeout ? 504 : 502 }
     );
   }
