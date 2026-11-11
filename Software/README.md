@@ -29,7 +29,7 @@ El diseno del software se rige por un **modelo de responsabilidades desacopladas
 | Graficacion Vectorial | Recharts | 2.15.1 | Renderizado vectorial SVG de la curva esfuerzo-deformacion en tiempo real. |
 | Generacion de Reportes | jsPDF | 4.2.1 | Compilacion programatica de documentos PDF con rasterizacion del grafico. |
 | Autenticacion y DB | @supabase/supabase-js | 2.49.4 | Cliente singleton para gestion de sesiones JWT y perfiles con RLS. |
-| Motor de IA | Google Generative AI | gemini-2.5-flash | Diagnostico metrologico y soporte tecnico contextualizado. |
+| Motor de IA | YoungBot | gemini-1.5-flash / gemini-3 | Diagnostico metrologico y soporte tecnico contextualizado. |
 | Estilos y Layout | Tailwind CSS | 3.4.19 | Diseno de interfaces responsivas y paneles de instrumentos. |
 
 ---
@@ -524,7 +524,7 @@ CRON_SECRET=<cadena-aleatoria-de-autenticacion-sha256>
 
 # Parametros privados de servidor para inferencia con IA
 GEMINI_API_KEY=<clave-api-google-ai-studio>
-GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MODEL=gemini-1.5-flash
 ```
 
 ### 11.2. Scripts del Ciclo de Desarrollo
