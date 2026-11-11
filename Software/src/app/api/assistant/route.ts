@@ -116,6 +116,24 @@ function buildContextString(context?: RequestContext): string {
   return lines.join("\n");
 }
 
+function normalizeModelName(raw: string): string[] {
+  const trimmed = raw.trim();
+  if (!trimmed) return [];
+  const lower = trimmed.toLowerCase();
+
+  // Mapeos intuitivos para cuando el usuario configure 3, 3.1 o 2.5 en las variables de entorno
+  if (lower === "3" || lower === "gemini-3" || lower === "3 flash" || lower === "3.0") {
+    return ["gemini-3-flash", "gemini-3-flash-preview", "gemini-3.0-flash"];
+  }
+  if (lower === "3.1" || lower === "gemini-3.1" || lower === "3.1 pro") {
+    return ["gemini-3.1-pro-preview", "gemini-3.1-pro", "gemini-3.1-flash"];
+  }
+  if (lower === "2.5" || lower === "2.5 flash" || lower === "gemini-2.5" || lower === "gemini-2.5-flash") {
+    return ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+  }
+  return [trimmed];
+}
+
 // Descubrimiento dinámico de modelos autorizados para la API key provista
 async function discoverModels(key: string): Promise<string[]> {
   for (const apiVer of ["v1beta", "v1"] as const) {
@@ -297,17 +315,25 @@ export async function POST(request: NextRequest) {
   }
 
   // Lista prioritaria de modelos compatibles actuales
+  // Se integran modelos Gemini 3 y 3.1 solicitados, con fallback a modelos probados de alta cuota (1.5-flash)
+  const normalizedConfigured = normalizeModelName(configuredModel);
+
   const initialCandidates = [
-    configuredModel,
-    "gemini-2.0-flash",
+    ...normalizedConfigured,
+    // Candidatos Gemini 3 / 3.1
+    "gemini-3-flash",
+    "gemini-3-flash-preview",
+    "gemini-3.1-pro-preview",
+    "gemini-3.0-flash",
+    // Modelos estables de alta disponibilidad y cuota (15 RPM / 1500 RPD)
     "gemini-1.5-flash",
+    "gemini-1.5-flash-8b",
+    "gemini-2.0-flash",
     "gemini-1.5-flash-latest",
     "gemini-1.5-flash-002",
     "gemini-1.5-flash-001",
-    "gemini-1.5-flash-8b",
     "gemini-2.0-flash-lite",
     "gemini-1.5-pro",
-    "gemini-1.5-pro-latest",
   ].filter(Boolean);
 
   const candidateModels = Array.from(new Set(initialCandidates));
@@ -324,9 +350,16 @@ export async function POST(request: NextRequest) {
     }
     lastResult = res;
 
-    // Si es error de credenciales o de cuota, no seguir probando otros modelos
-    if (res.status === 401 || res.status === 403 || res.status === 429) {
+    // Si la clave no está autorizada (401/403), ningún modelo funcionará
+    if (res.status === 401 || res.status === 403) {
       break;
+    }
+
+    // Si un modelo retorna 429 (saturado o cuota por minuto de ese modelo específico),
+    // probamos el siguiente modelo de la lista ya que cada modelo tiene su propio cupo
+    if (res.status === 429) {
+      console.warn(`[api/assistant] Modelo ${model} reportó 429 (cuota/rate limit), probando siguiente candidato...`);
+      continue;
     }
   }
 
@@ -342,8 +375,11 @@ export async function POST(request: NextRequest) {
         break;
       }
       lastResult = res;
-      if (res.status === 401 || res.status === 403 || res.status === 429) {
+      if (res.status === 401 || res.status === 403) {
         break;
+      }
+      if (res.status === 429) {
+        continue;
       }
     }
   }
@@ -363,8 +399,23 @@ export async function POST(request: NextRequest) {
       );
     }
     if (lastResult.status === 429) {
+      let detailMsg = "";
+      try {
+        const parsed = JSON.parse(lastResult.text) as { error?: { message?: string } };
+        detailMsg = parsed?.error?.message || "";
+      } catch {
+        detailMsg = lastResult.text;
+      }
+
+      const isDailyLimit = /day|daily|RPD/i.test(detailMsg);
+      const advice = isDailyLimit
+        ? "Se ha consumido la cuota diaria gratuita de esta clave. Genere una nueva clave gratuita al instante en Google AI Studio (aistudio.google.com/app/apikey) y actualícela en Vercel."
+        : "Se superó el límite de consultas por minuto. Por favor espere unos 20-30 segundos y vuelva a consultar.";
+
       return NextResponse.json(
-        { error: "Límite de cuota de YoungBot alcanzado temporalmente. Por favor, espere un momento antes de volver a consultar." },
+        {
+          error: `Límite de cuota alcanzado temporalmente. ${advice}`,
+        },
         { status: 429 }
       );
     }
