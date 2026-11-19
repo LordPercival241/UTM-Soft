@@ -155,6 +155,7 @@ void TareaCeldaCarga(void * pvParameters) {
 // SETUP (NÚCLEO 1): ARRANQUE RÁPIDO Y NO BLOQUEANTE
 // =========================================================================
 void setup() {
+  Serial.setTxBufferSize(512); // Buffer de transmisión expandido para evitar bloqueo de pulsos del motor
   Serial.begin(115200);
   delay(200); // Retardo breve para inicialización de hardware sin demoras
 
@@ -224,7 +225,7 @@ void loop() {
       float fuerzaCopiar = (masaCopiar / 1000.0) * 9.80665;
       long adcCrudo = (long)(masaCopiar * PENDIENTE + offset);
 
-      // (A) Telemetría Web con CRC-16 CCITT
+      // Telemetría para plataforma Web UTMachine Lab con CRC-16 CCITT
       char payload[160];
       snprintf(payload, sizeof(payload),
                "SAMPLE,seq=%lu,t_ms=%lu,force_raw=%ld,displacement_raw=%ld,force_n=%.3f,displacement_mm=%.3f",
@@ -233,12 +234,6 @@ void loop() {
       char fullPacket[190];
       snprintf(fullPacket, sizeof(fullPacket), "%s,crc=%04X", payload, crc);
       Serial.println(fullPacket);
-
-      // (B) Telemetría para Serial Plotter de Arduino IDE y Script Python
-      Serial.print("Desplazamiento_mm:");
-      Serial.print(desplazamientoMM, 3);
-      Serial.print(",Fuerza_N:");
-      Serial.println(fuerzaCopiar, 3);
     }
 
     // Paradas por sensores de seguridad físicos
