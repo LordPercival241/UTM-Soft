@@ -215,6 +215,28 @@ export function useSerialTestSession() {
     }
   }, [send]);
 
+  const tare = useCallback(async () => {
+    if (!portRef.current) throw new Error("El controlador no está conectado.");
+    try {
+      await send("TARE");
+      setLastMessage("Tara de celda de carga completada.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Error al solicitar tara.");
+      throw caught;
+    }
+  }, [send]);
+
+  const jog = useCallback(async (distanceMm: number) => {
+    if (!portRef.current) throw new Error("El controlador no está conectado.");
+    try {
+      await send("JOG", { distance: distanceMm });
+      setLastMessage(`Ajuste manual: ${distanceMm > 0 ? "+" : ""}${distanceMm} mm iniciado.`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Error al desplazar actuador.");
+      throw caught;
+    }
+  }, [send]);
+
   const disconnect = useCallback(async () => {
     const reader = readerRef.current;
     const port = portRef.current;
@@ -232,5 +254,5 @@ export function useSerialTestSession() {
 
   useEffect(() => () => { void disconnect(); }, [disconnect]);
 
-  return { status, samples, droppedSamples, error, lastMessage, connect, disconnect, start, stop };
+  return { status, samples, droppedSamples, error, lastMessage, connect, disconnect, start, stop, tare, jog };
 }
