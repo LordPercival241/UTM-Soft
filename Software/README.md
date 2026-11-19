@@ -1,124 +1,158 @@
-# UTM Lab — Arquitectura, Protocolos y Funcionamiento del Software
+# UTMachine Lab -- Plataforma de Instrumentacion y Ensayos Mecanicos
 
-Sistema de software para la adquisicion determinista de datos en tiempo real, caracterizacion mecanica de materiales, procesamiento metrologico de curvas esfuerzo-deformacion y gestion de ensayos uniaxiales de traccion.
-
----
-
-## 1. Descripcion General y Enfoque Arquitectonico
-
-UTM Lab es una plataforma de software disenada para operar como el nucleo de control logico, telemetria y metrologia de una Maquina Universal de Ensayos (UTM) uniaxial orientada a cargas de hasta 100 N.
-
-El diseno del software se rige por un **modelo de responsabilidades desacopladas entre el borde fisico (microcontrolador) y la capa de aplicacion web**:
-
-1. **Aislamiento de tareas de tiempo real critico:** El microcontrolador ejecuta de forma autonoma las rutinas de lazo cerrado, temporizacion de muestreo, generacion de pulsos para el actuador paso a paso y accionamiento inmediato de paradas de emergencia o finales de carrera.
-2. **Adquisicion determinista en el cliente:** La aplicacion web establece comunicacion serial bidireccional punto a punto mediante la API estandar Web Serial (W3C), eliminando la latencia de servidores intermedios y garantizando el procesamiento directo en la memoria del navegador.
-3. **Metrologia estricta sin interpolacion artificial:** El software calcula las magnitudes derivadas (esfuerzo $\sigma$ y deformacion $\varepsilon$) exclusivamente a partir de las muestras que superan la verificacion de redundancia ciclica (CRC-16/CCITT). Queda terminantemente prohibida la inyeccion de curvas sintetizadas o datos simulados.
-4. **Politica Cero-Cloud para datos masivos (Zero Cloud Storage Footprint):** Las series temporales de medicion y los reportes generados se procesan en memoria volatil local y se exportan directamente al disco del operador en formatos CSV y PDF formal. Los servicios cloud se restringen exclusivamente a la autenticacion de operadores (Supabase Auth) y a la evaluacion contextual asistida por modelos de lenguaje (Google Gemini API).
+Sistema de software y firmware para la adquisicion determinista de datos en tiempo real, caracterizacion mecanica de materiales, procesamiento metrologico de curvas esfuerzo-deformacion y gestion de ensayos uniaxiales de traccion en una Maquina Universal de Ensayos (UTM) de bajo costo.
 
 ---
 
-## 2. Pila Tecnologica y Dependencias
+## 1. Descripcion General
 
-| Componente / Capa | Tecnologia | Version | Funcion Especifica |
+UTMachine Lab es una plataforma integrada hardware-software disenada para operar como el nucleo de control logico, telemetria y metrologia de una UTM uniaxial orientada a cargas de hasta 100 N, construida con componentes accesibles para entornos academicos.
+
+El sistema se compone de dos subsistemas principales:
+
+1. **Firmware embebido (ESP32 Dual-Core):** Ejecuta en tiempo real la generacion de pulsos para el motor paso a paso, la adquisicion sincrona de la celda de carga mediante el convertidor HX711 y los protocolos de seguridad fisica (finales de carrera, parada de emergencia). Utiliza FreeRTOS con asignacion de tareas por nucleo para garantizar determinismo temporal.
+
+2. **Plataforma web (Next.js / React):** Establece comunicacion serial bidireccional punto a punto mediante la Web Serial API (W3C), recibe y valida los paquetes de telemetria con verificacion CRC-16/CCITT, calcula las magnitudes de ingenieria mecanica (esfuerzo, deformacion, modulo de Young), renderiza la curva esfuerzo-deformacion en tiempo real y genera reportes formales PDF y archivos CSV para exportacion local.
+
+### Principios de Diseno
+
+* **Aislamiento de tareas de tiempo real critico:** El microcontrolador opera de manera autonoma; la plataforma web no interviene en la temporizacion de pulsos ni en la lectura del ADC.
+* **Adquisicion determinista en el cliente:** La comunicacion serial directa elimina la latencia de servidores intermedios.
+* **Metrologia sin inyeccion sintetica:** Las magnitudes derivadas se calculan exclusivamente a partir de muestras verificadas por CRC. No se inyectan curvas simuladas ni datos interpolados artificialmente.
+* **Politica Cero-Cloud para datos de ensayo:** Las series temporales permanecen en la memoria volatil del navegador. Los servicios en la nube se restringen a autenticacion de operadores (Supabase Auth) y asistencia contextual (Google Gemini API).
+
+---
+
+## 2. Pila Tecnologica
+
+| Componente | Tecnologia | Version | Funcion |
 | :--- | :--- | :--- | :--- |
-| Framework Base | Next.js (App Router) | 15.1.6 | Arquitectura de renderizado en cliente y Route Handlers serverless. |
-| Libreria de UI | React | 19.0.0 | Manejo declarativo del arbol de componentes y estado reactivo. |
-| Tipado Estatico | TypeScript | 5.7.2 | Tipado estricto en tiempo de compilacion para el dominio metrologico. |
-| Validacion de Esquemas | Zod | 3.24.2 | Validacion formal de entradas de formulario y contratos de payload serial/API. |
-| Comunicacion Hardware | Web Serial API | Estandar W3C | Acceso bidireccional directo a puertos seriales USB (UART). |
-| Graficacion Vectorial | Recharts | 2.15.1 | Renderizado vectorial SVG de la curva esfuerzo-deformacion en tiempo real. |
-| Generacion de Reportes | jsPDF | 4.2.1 | Compilacion programatica de documentos PDF con rasterizacion del grafico. |
-| Autenticacion y DB | @supabase/supabase-js | 2.49.4 | Cliente singleton para gestion de sesiones JWT y perfiles con RLS. |
-| Motor de IA | YoungBot | gemini-1.5-flash / gemini-3 | Diagnostico metrologico y soporte tecnico contextualizado. |
-| Estilos y Layout | Tailwind CSS | 3.4.19 | Diseno de interfaces responsivas y paneles de instrumentos. |
+| Microcontrolador | ESP32 DevKit V1 | -- | Controlador de motor, ADC y seguridad fisica |
+| Controlador Motor | DRV8825 | -- | Driver bipolar con microstepping 1/8 |
+| Celda de Carga ADC | HX711 | -- | Conversion analogica-digital a 10 SPS |
+| Framework Web | Next.js (App Router) | 15.1.6 | Renderizado en cliente y Route Handlers serverless |
+| Libreria de UI | React | 19.0.0 | Componentes declarativos y estado reactivo |
+| Tipado Estatico | TypeScript | 5.7.2 | Tipado estricto en tiempo de compilacion |
+| Validacion | Zod | 3.24.2 | Validacion formal de entradas y contratos de payload |
+| Comunicacion Hardware | Web Serial API | W3C | Acceso bidireccional a puertos serie USB (UART) |
+| Graficacion | Recharts | 2.15.1 | Renderizado vectorial SVG de curvas en tiempo real |
+| Reportes | jsPDF | 4.2.1 | Compilacion de documentos PDF con rasterizacion de graficos |
+| Autenticacion | Supabase Auth | 2.49.4 | Gestion de sesiones JWT y perfiles con RLS |
+| Asistencia IA | Google Gemini API | gemini-2.5-flash | Diagnostico metrologico contextualizado |
+| Estilos | Tailwind CSS | 3.4.19 | Diseno responsivo con soporte de tema claro y oscuro |
 
 ---
 
-## 3. Arquitectura del Sistema y Flujo de Datos
+## 3. Arquitectura del Sistema
 
 ```text
-+-----------------------------------------------------------------------------------------+
-|                                    CONTROLADOR LOCAL                                    |
-|                                                                                         |
-|   [ Sensor Celda de Carga ] ---> [ Acondicionamiento ADC ]                              |
-|                                            |                                            |
-|   [ Paro / Finales de Carrera ] ---------> [ Firmware C/C++ en MCU ]                    |
-|                                            | (Arduino ATmega328P / ESP32)               |
-|                                            v                                            |
-|                                   Buffer Serial UART                                    |
-+--------------------------------------------+--------------------------------------------+
-                                             | Cable USB (115200 baud, 8N1)
-                                             v
-+-----------------------------------------------------------------------------------------+
-|                             NAVEGADOR CLIENTE (CHROME / EDGE)                           |
-|                                                                                         |
-|   +-- Web Serial API (ReadableStreamDefaultReader / TextDecoder)                        |
-|   |                                                                                     |
-|   +-- Hook useSerialTestSession                                                         |
-|   |   +-- Demultiplexor de Tramas (CMD / ACK / SAMPLE / EVENT)                          |
-|   |   +-- Verificador CRC-16/CCITT (Polinomio 0x1021, Semilla 0xFFFF)                   |
-|   |   +-- Monitor de Secuencia Monotona (Deteccion de muestras descartadas/perdidas)    |
-|   |   +-- Despachador de Transacciones (Registro y Timeout de Comandos - 3000 ms)       |
-|   |                                                                                     |
-|   +-- Pipeline Metrologico (test-domain.ts)                                             |
-|   |   +-- Calculo de Esfuerzo de Ingenieria: sigma = F / A_0                            |
-|   |   +-- Calculo de Deformacion Unitaria:   epsilon = Delta_L / L_0                    |
-|   |                                                                                     |
-|   +-- Capa de Renderizado en Vivo                                                       |
-|   |   +-- Grafico SVG Dinamico (Recharts - LineChart)                                   |
-|   |   +-- Instrumental Digital (Lectura puntual F, sigma, epsilon, delta_L, alertas)    |
-|   |                                                                                     |
-|   +-- Modulo de Exportacion Local en Memoria                                            |
-|       +-- Generador CSV con Sanitizacion de Formulas (csv.ts)                           |
-|       +-- Generador de Reporte PDF Metrologico Formal (pdf-report.ts)                   |
-+--------------------------------------------+--------------------------------------------+
-                                             | HTTPS / JSON (Route Handlers)
-                                             v
-+-----------------------------------------------------------------------------------------+
-|                                   SERVICIOS DE SOPORTE                                  |
-|                                                                                         |
-|   +-- /api/assistant (Next.js Serverless)                                               |
-|   |   +-- Validacion de Token JWT Supabase                                              |
-|   |   +-- Prompt Metrologico Estructurado (Normas ASTM D638 / ISO 527)                  |
-|   |   +-- Inferencia con Google Gemini API (gemini-2.5-flash)                           |
-|   |                                                                                     |
-|   +-- /api/cron/keep-alive (Next.js Serverless)                                         |
-|   |   +-- Validacion de Encabezado Authorization: Bearer <CRON_SECRET>                  |
-|   |   +-- Transaccion SQL Minima sobre Supabase PostgreSQL (Prevencion de Pausa)        |
-|   |                                                                                     |
-|   +-- Supabase Platform (PostgreSQL)                                                    |
-|       +-- Esquema auth.users (Cuentas de Operadores)                                    |
-|       +-- Tabla public.profiles con Row Level Security (RLS)                            |
-+-----------------------------------------------------------------------------------------+
++-----------------------------------------------------------------------------------+
+|                        CONTROLADOR LOCAL (ESP32 Dual-Core)                        |
+|                                                                                   |
+|  NUCLEO 0 (FreeRTOS Task - Prioridad 2):                                         |
+|    [ HX711 ADC ] --> [ Lectura sincrona a 10 SPS ]                                |
+|    [ Tara de celda de carga (offset calibrable) ]                                 |
+|    [ Par atomico: (masa, posicion) con portMUX ]                                  |
+|                                                                                   |
+|  NUCLEO 1 (loop Arduino):                                                         |
+|    [ AccelStepper ] --> [ Pulsos DRV8825 a 800 Hz nominal ]                       |
+|    [ Parser de comandos serial no bloqueante ]                                    |
+|    [ Maquina de estados: READY -> ARMED -> RUNNING -> STOPPED ]                   |
+|    [ Botones fisicos: CERO (GPIO 21) + LIMITE (GPIO 5) ]                          |
+|    [ Telemetria SAMPLE con CRC-16/CCITT cada 100 ms ]                             |
+|                                                                                   |
+|  Buffer UART TX: 512 bytes (evita bloqueo de pulsos del motor)                    |
++--------------------------------------+--------------------------------------------+
+                                       | Cable USB (115200 baud, 8N1)
+                                       v
++-----------------------------------------------------------------------------------+
+|                      NAVEGADOR CLIENTE (Chrome / Edge)                            |
+|                                                                                   |
+|  +-- Web Serial API (ReadableStreamDefaultReader / TextDecoder)                   |
+|  |                                                                                |
+|  +-- Hook useSerialTestSession                                                    |
+|  |   +-- Demultiplexor de Tramas (CMD / ACK / SAMPLE / EVENT)                     |
+|  |   +-- Verificador CRC-16/CCITT (Polinomio 0x1021, Semilla 0xFFFF)             |
+|  |   +-- Monitor de Secuencia Monotona (Deteccion de muestras perdidas)           |
+|  |   +-- Despachador Transaccional (UUID + Timeout 3000 ms)                       |
+|  |                                                                                |
+|  +-- Pipeline Metrologico (test-domain.ts)                                        |
+|  |   +-- Esfuerzo: sigma = F / A_0  [MPa]                                        |
+|  |   +-- Deformacion: epsilon = Delta_L / L_0  [adimensional]                     |
+|  |                                                                                |
+|  +-- Renderizado en Vivo                                                          |
+|  |   +-- Curva sigma vs epsilon (Recharts LineChart SVG)                           |
+|  |   +-- KPIs: F_max, sigma_max, epsilon_max, desplazamiento                     |
+|  |   +-- Consola serial y contador de paquetes perdidos                            |
+|  |                                                                                |
+|  +-- Exportacion Local                                                            |
+|      +-- PDF formal con grafica (fondo blanco), Modulo de Young, tabla            |
+|      +-- CSV con metadatos y sanitizacion contra inyeccion de formulas            |
++--------------------------------------+--------------------------------------------+
+                                       | HTTPS / JSON (Route Handlers)
+                                       v
++-----------------------------------------------------------------------------------+
+|                            SERVICIOS DE SOPORTE                                   |
+|                                                                                   |
+|  +-- /api/assistant (Serverless)                                                  |
+|  |   +-- Validacion JWT Supabase + Prompt metrologico ASTM D638 / ISO 527         |
+|  |   +-- Inferencia Google Gemini API                                             |
+|  |                                                                                |
+|  +-- /api/cron/keep-alive (Serverless, cada 5 dias)                               |
+|  |   +-- Transaccion SQL minima para prevencion de pausa Supabase                 |
+|  |                                                                                |
+|  +-- Supabase Platform (PostgreSQL)                                               |
+|      +-- auth.users (Cuentas de operadores)                                       |
+|      +-- public.profiles con Row Level Security (RLS)                             |
++-----------------------------------------------------------------------------------+
 ```
 
 ---
 
-## 4. Protocolo de Comunicacion Serial v1
+## 4. Hardware: Asignacion de Pines del ESP32
 
-La comunicacion fisica se realiza a traves de un puerto serie virtual UART sobre USB.
+| Funcion | GPIO | Componente | Notas |
+| :--- | :--- | :--- | :--- |
+| Pulso STEP | 18 | DRV8825 STEP | Señal de paso del motor NEMA 17 |
+| Direccion DIR | 19 | DRV8825 DIR | Sentido de giro (invertido por firmware) |
+| Datos celda | 15 | HX711 DOUT | Linea de datos del ADC |
+| Reloj celda | 2 | HX711 SCK | Señal de reloj del ADC |
+| Boton Cero | 21 | Pulsador NC | Parada de seguridad / origen mecanico (INPUT_PULLUP) |
+| Boton Limite | 5 | Final de carrera | Limite de ensayo / fin de carrera (INPUT_PULLUP) |
 
-### 4.1. Parametros de Enlace Fisico
+### Parametros Mecanicos del Firmware
 
-* **Velocidad de transmision:** 115200 baudios.
-* **Configuracion de bits:** 8 bits de datos, sin paridad, 1 bit de parada (8N1).
-* **Control de flujo:** Ninguno (manejo de flujo por software mediante tramas transaccionales).
-* **Delimitador de linea:** Retorno de carro y salto de linea (`\r\n`) o salto de linea estandar (`\n`).
+| Parametro | Valor | Descripcion |
+| :--- | :--- | :--- |
+| `pasosPorVuelta` | 1600 | Microstepping 1/8 en DRV8825 (200 pasos x 8) |
+| `mmPorVuelta` | 1.0 mm | Paso del husillo trapezoidal T8 |
+| `pasosPorMM` | 1600 pasos/mm | Resolucion espacial: 0.625 um/paso |
+| `velocidadPruebaMMs` | 0.5 mm/s | Velocidad por defecto del ensayo |
+| `aceleracion` | 500 pasos/s^2 | Rampa de arranque suave |
+| `PENDIENTE` | -220.858444 | Factor de calibracion de la celda de carga (HX711) |
+| `offset` | -213236.88 | Valor de tara inicial (actualizable por comando TARE) |
 
-### 4.2. Formato General de Tramas
+---
 
-Todas las cadenas de datos se codifican en formato ASCII estandar, delimitadas por comas. El primer token define el tipo de mensaje:
+## 5. Protocolo de Comunicacion Serial v1
 
-* `CMD`: Orden enviada desde la aplicacion web hacia el microcontrolador.
-* `ACK`: Respuesta obligatoria del microcontrolador ante un `CMD`.
-* `SAMPLE`: Trama periodica de medicion generada por el microcontrolador durante la ejecucion de un ensayo.
-* `EVENT`: Notificacion asincrona de estado o interrupcion de seguridad emitida por el microcontrolador.
+### 5.1. Parametros de Enlace Fisico
 
-### 4.3. Handshake y Control Transaccional
+* **Velocidad:** 115200 baudios
+* **Configuracion:** 8 bits de datos, sin paridad, 1 bit de parada (8N1)
+* **Control de flujo:** Ninguno (manejo por tramas transaccionales)
+* **Delimitador:** `\r\n` o `\n`
 
-Cada orden emitida por el hook `useSerialTestSession` genera un identificador universal unico (UUID v4) y se asocia a un temporizador de rechazo de 3000 ms. Si el firmware no responde con un `ACK` que contenga el mismo identificador dentro de dicho plazo, la promesa se rechaza y el sistema pasa a estado de falla.
+### 5.2. Tipos de Tramas
 
-Secuencia de estados de la maquina de software:
+| Prefijo | Direccion | Funcion |
+| :--- | :--- | :--- |
+| `CMD` | Web --> ESP32 | Orden de control con identificador UUID |
+| `ACK` | ESP32 --> Web | Respuesta obligatoria ante un CMD |
+| `SAMPLE` | ESP32 --> Web | Trama periodica de medicion (10 Hz durante ensayo) |
+| `EVENT` | ESP32 --> Web | Notificacion asincrona de estado o seguridad |
+
+### 5.3. Maquina de Estados
 
 ```text
 [disconnected] ---> (connect) ---> [connecting] ---> (HELLO / ACK) ---> [ready]
@@ -131,431 +165,288 @@ Secuencia de estados de la maquina de software:
                     (EVENT:FAULT/LIMIT/OVERLOAD)
 ```
 
-Tiempos y transacciones:
+### 5.4. Comandos Soportados
 
-1. **Sondeo de Presencia (HELLO):**
-   * Transmision: `CMD,id=b1899120-6d43-455b-b9f1-d0eb9f18a230,type=HELLO`
-   * Respuesta esperada: `ACK,id=b1899120-6d43-455b-b9f1-d0eb9f18a230,status=OK`
+| Tipo de Comando | Descripcion | Ejemplo de Trama |
+| :--- | :--- | :--- |
+| `HELLO` | Sondeo de presencia del controlador | `CMD,id=<uuid>,type=HELLO` |
+| `ARM_TEST` | Armado del ensayo | `CMD,id=<uuid>,type=ARM_TEST,calibration_profile=CAL-DEFAULT` |
+| `START_TEST` | Inicio de accionamiento y muestreo | `CMD,id=<uuid>,type=START_TEST` |
+| `STOP_TEST` | Detencion del ensayo | `CMD,id=<uuid>,type=STOP_TEST` |
+| `TARE` | Tara de la celda de carga a cero | `CMD,id=<uuid>,type=TARE` |
+| `JOG` | Desplazamiento manual de mordaza | `CMD,id=<uuid>,type=JOG,distance=10.0` |
+| `SET_SPEED` | Configuracion de velocidad de ensayo | `CMD,id=<uuid>,type=SET_SPEED,speed=0.5` |
 
-2. **Armado de Ensayo (ARM_TEST):**
-   * Transmision: `CMD,id=1c6b12d5-9bf6-4b89-a292-1a48c6bf9087,type=ARM_TEST,calibration_profile=CAL-DEFAULT`
-   * Respuesta esperada: `ACK,id=1c6b12d5-9bf6-4b89-a292-1a48c6bf9087,status=OK`
-   * Si el firmware detecta una condicion anomala (paro pulsado o sensor no calibrado), responde:
-     `ACK,id=1c6b12d5-9bf6-4b89-a292-1a48c6bf9087,status=ERROR,reason=Paro_de_emergencia_activado`
+### 5.5. Telemetria en Tiempo Real (Trama SAMPLE)
 
-3. **Inicio de Accionamiento y Muestreo (START_TEST):**
-   * Transmision: `CMD,id=3a95bf2e-0678-43b9-a9a2-94ea480f2d31,type=START_TEST`
-   * Respuesta esperada: `ACK,id=3a95bf2e-0678-43b9-a9a2-94ea480f2d31,status=OK`
+Durante la fase activa del ensayo, el microcontrolador transmite paquetes de medicion a 10 Hz:
 
-4. **Detencion de Ensayo (STOP_TEST):**
-   * Transmision: `CMD,id=52d9c57e-fbb6-4d51-86be-e4d7759ad234,type=STOP_TEST`
-   * Respuesta esperada: `ACK,id=52d9c57e-fbb6-4d51-86be-e4d7759ad234,status=OK`
-
-### 4.4. Telemetria en Tiempo Real (Trama SAMPLE)
-
-Durante la fase activa del ensayo (`running`), el microcontrolador transmite paquetes de medicion con una frecuencia nominal de 10 Hz (periodo de 100 ms).
-
-Estructura de la trama:
 ```text
-SAMPLE,seq=42,t_ms=4200,force_raw=8320,displacement_raw=840,force_n=41.50,displacement_mm=2.100,crc=3B9A
+SAMPLE,seq=42,t_ms=4200,force_raw=8320,displacement_raw=840,force_n=41.500,displacement_mm=2.100,crc=3B9A
 ```
 
-Definicion de campos:
-* `seq` (entero sin signo): Contador secuencial monotonamente creciente asignado por el firmware.
-* `t_ms` (entero sin signo): Marca temporal en milisegundos desde el inicio del ensayo, generada por el timer del procesador.
-* `force_raw` (entero): Valor directo digitalizado del conversor analogico-digital de la celda de carga.
-* `displacement_raw` (entero): Conteo acumulado de pasos del motor o pulsos del codificador de posicion.
-* `force_n` (flotante con 2 decimales): Fuerza fisica calculada por el firmware en Newtons [N].
-* `displacement_mm` (flotante con 3 decimales): Desplazamiento lineal de la mordaza movil en milimetros [mm].
-* `crc` (hexadecimal de 4 caracteres en mayusculas): Suma de verificacion CRC-16/CCITT calculada sobre la totalidad de la cadena anterior a `,crc=`.
+| Campo | Tipo | Descripcion |
+| :--- | :--- | :--- |
+| `seq` | Entero | Contador secuencial monotonamente creciente |
+| `t_ms` | Entero | Marca temporal en milisegundos desde inicio del ensayo |
+| `force_raw` | Entero | Valor crudo del ADC de la celda de carga |
+| `displacement_raw` | Entero | Conteo acumulado de pasos del motor |
+| `force_n` | Flotante (3 dec.) | Fuerza calibrada en Newtons [N] |
+| `displacement_mm` | Flotante (3 dec.) | Desplazamiento lineal en milimetros [mm] |
+| `crc` | Hexadecimal (4 car.) | CRC-16/CCITT sobre la cadena anterior a `,crc=` |
 
-### 4.5. Validacion de Integridad mediante CRC-16/CCITT
+### 5.6. Verificacion de Integridad (CRC-16/CCITT)
 
-Para evitar que errores de transmision UART o interferencias electromagneticas por conmutacion del motor paso a paso alteren los valores metrologicos, el software recalcula en el cliente el algoritmo CRC-16/CCITT sobre cada cadena recibida:
+* **Polinomio generador:** `0x1021`
+* **Valor inicial:** `0xFFFF`
+* **Regla de descarte:** Si el CRC recibido no coincide con el calculado por el cliente, la muestra se descarta y se incrementa el contador de paquetes perdidos.
 
-* **Polinomio generador:** $G(x) = x^{16} + x^{12} + x^5 + 1$ (representacion canonica `0x1021`).
-* **Valor inicial de registro:** `0xFFFF`.
-* **Procesamiento de bits:** Desplazamiento a la izquierda con mascara `0x8000`.
+### 5.7. Eventos de Seguridad
 
-Implementacion algoritmica en TypeScript ([`src/hooks/use-serial-test-session.ts`](src/hooks/use-serial-test-session.ts)):
-
-```typescript
-const crc16Ccitt = (input: string): number => {
-  let crc = 0xffff;
-  for (let index = 0; index < input.length; index += 1) {
-    crc ^= input.charCodeAt(index) << 8;
-    for (let bit = 0; bit < 8; bit += 1) {
-      crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff;
-    }
-  }
-  return crc;
-};
-```
-
-Regla de descarte: si el valor hexadecimal contenido en el campo `crc` no coincide de forma exacta con el valor computado sobre la porcion previa a `,crc=`, la muestra es rechazada de inmediato y descartada del pipeline metrologico.
-
-### 4.6. Deteccion y Registro de Perdida de Paquetes
-
-El software mantiene en memoria una referencia al ultimo numero de secuencia validado (`lastSequenceRef`). Si al arribar una nueva muestra valida se cumple la condicion:
-
-$$\text{seq}_{\text{actual}} > \text{seq}_{\text{anterior}} + 1$$
-
-El contador de paquetes perdidos (`droppedSamples`) se incrementa por la diferencia exacta:
-
-$$\Delta_{\text{perdida}} = \text{seq}_{\text{actual}} - \text{seq}_{\text{anterior}} - 1$$
-
-Esta metrica se conserva en el estado de la sesion y se consigna de forma permanente tanto en el archivo CSV como en el reporte formal PDF, garantizando la trazabilidad experimental.
-
-### 4.7. Eventos Asincronos de Seguridad (Trama EVENT)
-
-El firmware posee prioridad de corte y puede emitir en cualquier momento mensajes de evento que suspenden de inmediato el ensayo:
-
-* `EVENT,type=OVERLOAD,detail=Fuerza_excede_100N`: La carga leida ha superado el umbral seguro del prototipo.
-* `EVENT,type=LIMIT_REACHED,detail=Final_de_carrera_superior`: El carro alcanzo el switch de carrera fisico.
-* `EVENT,type=FAULT,detail=Error_lectura_celda`: Perdida de comunicacion con el convertidor ADC o datos corruptos recurrentes.
-* `EVENT,type=TEST_FINISHED`: Condicion de finalizacion programada del ensayo alcanzada normalmente.
-
-Al recibir cualquiera de los eventos de falla (`FAULT`, `LIMIT_REACHED`, `OVERLOAD`), el software conmuta de forma sincronizada el estado a `fault` y despliega la advertencia correspondiente al operador.
+| Evento | Significado |
+| :--- | :--- |
+| `EVENT,type=LIMIT_REACHED` | Final de carrera o boton fisico activado |
+| `EVENT,type=OVERLOAD` | Fuerza excede el umbral seguro del prototipo |
+| `EVENT,type=FAULT` | Error de lectura de celda o datos corruptos recurrentes |
+| `EVENT,type=TEST_FINISHED` | Finalizacion normal del ensayo |
 
 ---
 
-## 5. Logica de Dominio y Modelo Metrologico
+## 6. Logica de Dominio y Modelo Metrologico
 
-### 5.1. Validacion de Parametros Iniciales
+### 6.1. Conversion de Carga a Fuerza
 
-Antes de autorizar la transicion a estado armado (`ARM_TEST`), el software somete los datos ingresados a validacion estricta mediante Zod ([`src/lib/test-domain.ts`](src/lib/test-domain.ts)):
+En el firmware, la masa se obtiene del valor crudo del ADC y se convierte a fuerza:
 
-```typescript
-export const testSetupSchema = z.object({
-  specimenId: z.string().trim().min(1, "Identifique la probeta").max(80),
-  material: z.string().trim().min(1, "Indique el material").max(120),
-  gaugeLengthMm: z.coerce.number().positive("La longitud inicial debe ser mayor a cero"),
-  areaMm2: z.coerce.number().positive("El área inicial debe ser mayor a cero"),
-  calibrationProfileId: z.string().trim().min(1, "Seleccione un perfil de calibración")
-});
-```
+$$M = \frac{\text{ADC} - \text{offset}}{\text{PENDIENTE}} \quad [\text{g}]$$
 
-### 5.2. Ecuaciones de Ingenieria Mecanica
+$$F = \left(\frac{M}{1000}\right) \times 9.80665 \quad [\text{N}]$$
 
-Por cada trama `SAMPLE` validada por CRC, el software computa inmediatamente los parametros de ingenieria mediante la funcion `calculateEngineeringValues`:
+Donde $g_0 = 9.80665\text{ m/s}^2$ es la aceleracion estandar de la gravedad (ISO 80000-3).
 
-1. **Esfuerzo de Ingenieria ($\sigma$):**
+### 6.2. Conversion de Desplazamiento
 
-   $$\sigma = \frac{F}{A_0} \quad [\text{MPa}]$$
+$$d = \frac{\text{pasos}}{\text{pasosPorMM}} = \frac{\text{pasos}}{1600} \quad [\text{mm}]$$
 
-   Donde $F$ es la fuerza calibrada en Newtons [N] transmitida por el microcontrolador y $A_0$ es el area de la seccion transversal calibrada de la probeta en milimetros cuadrados [$\text{mm}^2$]. Dado que $1\text{ N/mm}^2 = 10^6\text{ Pa} = 1\text{ MPa}$, la unidad directa del sistema es Megapascales.
+Resolucion espacial: $\Delta d = 0.000625\text{ mm} = 0.625\,\mu\text{m/paso}$.
 
-2. **Deformacion Unitaria de Ingenieria ($\varepsilon$):**
+### 6.3. Esfuerzo de Ingenieria
 
-   $$\varepsilon = \frac{\Delta L}{L_0} \quad [\text{adimensional}]$$
+$$\sigma = \frac{F}{A_0} \quad [\text{MPa}]$$
 
-   Donde $\Delta L$ es el desplazamiento medido en milimetros [mm] y $L_0$ es la longitud inicial calibrada (gauge length) entre marcas de la probeta en milimetros [mm]. En la interfaz grafica y reportes se presenta tambien como porcentaje: $\varepsilon\% = \varepsilon \times 100\%$.
+Donde $F$ es la fuerza en Newtons y $A_0 = w \times t$ es el area transversal inicial de la probeta en $\text{mm}^2$. Dado que $1\text{ N/mm}^2 = 1\text{ MPa}$, la unidad es directa.
 
-### 5.3. Principio de Cero Inyeccion Sintetica
+### 6.4. Deformacion Unitaria de Ingenieria
 
-A diferencia de simuladores o software demostrativo, la base de codigo de UTM Lab no contiene generadores aleatorios de curvas ni algoritmos de interpolacion sintetica. El arreglo de muestras (`samplesRef`) permanece vacio hasta que el microcontrolador fisico transmite tramas autenticadas a traves del canal serial USB. Si la transmision se detiene o se corrompe, el grafico congela su trazo en el ultimo punto verificado.
+$$\varepsilon = \frac{\Delta L}{L_0} \quad [\text{adimensional}]$$
 
----
+Donde $\Delta L$ es el desplazamiento medido y $L_0$ es la longitud inicial calibrada (gauge length). En la interfaz y reportes se presenta tambien como porcentaje: $\varepsilon\% = \varepsilon \times 100\%$.
 
-## 6. Politica de Persistencia y Exportacion Cero-Cloud
+### 6.5. Modulo de Elasticidad de Young
 
-### 6.1. Justificacion Tecnica del Diseno
+$$E = \frac{\Delta \sigma}{\Delta \varepsilon} \quad [\text{MPa}]$$
 
-Un ensayo de traccion a 10 Hz que se prolonga por 10 minutos produce 6,000 registros de telemetria multicampo. Almacenar este volumen de datos crudos en bases de datos relacionales en la nube (como PostgreSQL sobre Supabase) generaria:
+Calculado en la region lineal elastica de la curva esfuerzo-deformacion, entre el 15% y el 45% de la zona previa al punto de fluencia. Se consigna de forma destacada en el reporte PDF.
 
-1. Consumo acelerado de las cuotas de almacenamiento y ancho de banda en planes gratuitos o acotados.
-2. Latencias innecesarias de sincronizacion de red que afectarian el rendimiento del navegador.
-3. Riesgo de filtracion o perdida de propiedad intelectual sobre disenos de probetas y formulaciones experimentales.
+### 6.6. Principio de Cero Inyeccion Sintetica
 
-Por este motivo, **la totalidad de las mediciones se almacena en memoria de acceso aleatorio (RAM) del navegador cliente** durante la sesion activa. La persistencia definitiva se delega a formatos de archivo estandarizados descargados localmente.
-
-### 6.2. Generacion de Reportes en Formato PDF
-
-El modulo [`src/lib/pdf-report.ts`](src/lib/pdf-report.ts) realiza la compilacion de un reporte formal metrologico directamente en el cliente mediante la biblioteca `jsPDF`:
-
-1. **Rasterizacion Vectorial:** Clona el elemento `<svg>` generado por Recharts en el DOM, le asigna dimensiones estandares (escala 2x para calidad de impresion de 300 DPI), lo dibuja sobre un elemento `<canvas>` HTML5 con fondo solido y extrae una imagen PNG en codificacion Base64 Data URL.
-2. **Encabezado y Metadatos:** Imprime numero de serie de reporte, fecha y hora de generacion, operador responsable, identificador de probeta, material ensayado, area de seccion inicial ($A_0$), longitud calibrada ($L_0$) y perfil de calibracion aplicado.
-3. **Resumen Metrologico:** Calcula y consigna en tabla destacada:
-   * Fuerza Maxima soportada: $F_{\text{max}}$ [N].
-   * Esfuerzo Maximo (Resistencia a la Traccion / UTS): $\sigma_{\text{max}}$ [MPa].
-   * Deformacion a Fuerza Maxima: $\varepsilon_{F\text{max}}$ [%].
-   * Deformacion Ultima alcanzada: $\varepsilon_{\text{max}}$ [%].
-   * Total de muestras adquiridas y numero de muestras descartadas por error de comunicacion.
-4. **Insercion Grafica:** Inserta la curva esfuerzo-deformacion en alta definicion dentro de la primera pagina.
-5. **Tabla de Muestras Representativas:** Genera una muestra decodificada a intervalos regulares que cubre el 100% de la extension del ensayo para verificacion visual sin necesidad de software externo.
-
-### 6.3. Generacion y Descarga de Datos Crudos en CSV
-
-El modulo [`src/lib/csv.ts`](src/lib/csv.ts) estructura la totalidad de la serie temporal en texto plano delimitado por comas:
-
-1. **Seccion de Metadatos (Cabecera Semantica):**
-   ```text
-   "format","utm-lab-csv-v1"
-   "specimen_id","PROBETA-PLA-001"
-   "material","PLA Infill 100%"
-   "gauge_length_mm","50"
-   "initial_area_mm2","12.5"
-   "calibration_profile_id","CAL-DEFAULT"
-   "sample_count","1450"
-   "detected_dropped_samples","0"
-   ```
-2. **Sanitizacion contra Inyeccion de Formulas (CSV Injection):** Para prevenir ataques de ejecucion de comandos en hojas de calculo (Microsoft Excel, LibreOffice Calc), cualquier valor de texto que inicie con caracteres de control de formulas (`=`, `+`, `-`, `@`, tabulador o retorno de carro) es prefijado con un apostrofe aislante (`'`).
-3. **Matriz de Telemetria Completa:** Incluye columnas con encabezados tecnicos: `sequence`, `device_time_ms`, `force_raw`, `displacement_raw`, `force_n`, `displacement_mm`, `engineering_stress_mpa` y `engineering_strain`.
+El arreglo de muestras permanece vacio hasta que el microcontrolador fisico transmite tramas verificadas. No existen generadores de datos aleatorios ni algoritmos de interpolacion sintetica en la base de codigo.
 
 ---
 
-## 7. Modulo de Autenticacion, Seguridad y Persistencia en Supabase
+## 7. Generacion de Reportes
 
-Supabase se utiliza con un proposito estrictamente acotado: **autenticacion de operadores y control de sesiones seguras**.
+### 7.1. Reporte PDF Formal
 
-### 7.1. Modelo Relacional y Politicas de Control de Acceso (RLS)
+El modulo `pdf-report.ts` genera un documento PDF metrologico directamente en el navegador:
 
-El esquema de base de datos ([`supabase/migrations/202609180001_initial.sql`](supabase/migrations/202609180001_initial.sql)) define la tabla `public.profiles`, vinculada mediante clave foranea a la tabla interna de usuarios del motor de autenticacion:
+1. **Encabezado institucional** con logo, fecha, referencia normativa (ASTM D638 / ISO 527).
+2. **Informacion de la probeta:** ID, material, operador, longitud inicial, area transversal, perfil de calibracion.
+3. **Propiedades mecanicas calculadas:** Fuerza maxima ($F_{\text{max}}$), esfuerzo maximo ($\sigma_{\text{max}}$), deformacion maxima ($\varepsilon_{\text{max}}$).
+4. **Modulo de Young ($E$):** Recuadro destacado con formula, valor numerico y rango de regresion utilizado.
+5. **Curva esfuerzo-deformacion:** Grafica renderizada con fondo blanco y colores adaptados para impresion.
+6. **Tabla de muestreo representativo:** 8 puntos distribuidos uniformemente a lo largo del ensayo.
+7. **Pie de pagina** con referencia institucional y numero de pagina.
 
-```sql
-create table if not exists public.profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
-  email text,
-  full_name text,
-  role text default 'operator',
-  created_at timestamptz not null default now()
-);
+### 7.2. Exportacion CSV
 
-alter table public.profiles enable row level security;
-
-create policy "Operadores pueden ver su propio perfil" 
-  on public.profiles for select 
-  using (auth.uid() = id);
-
-create policy "Operadores pueden actualizar su propio perfil" 
-  on public.profiles for update 
-  using (auth.uid() = id);
-```
-
-La activacion de **Row Level Security (RLS)** garantiza que ningun cliente pueda consultar o modificar registros pertenecientes a otros operadores, restringiendo las operaciones exclusivamente a la clave primaria coincidente con el UUID del token de sesion emitido (`auth.uid() = id`).
-
-### 7.2. Trigger Automatizado de Registro
-
-Para asegurar la integridad referencial sin requerir transacciones multiples desde la aplicacion web, se implementa una funcion en PL/pgSQL ejecutada con privilegios `SECURITY DEFINER`:
-
-```sql
-create or replace function public.handle_new_user()
-returns trigger as $$
-begin
-  insert into public.profiles (id, email, full_name)
-  values (
-    new.id,
-    new.email,
-    coalesce(new.raw_user_meta_data->>'full_name', 'Operador')
-  )
-  on conflict (id) do nothing;
-  return new;
-end;
-$$ language plpgsql security definer;
-
-drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created
-  after insert on auth.users
-  for each row execute procedure public.handle_new_user();
-```
-
-### 7.3. Mecanismo Keep-Alive de Prevencion de Pausa
-
-Las politicas de infraestructura de Supabase pausan de forma automatica los proyectos bajo plan gratuito que registren 7 dias consecutivos de inactividad total de base de datos. Para evitar la interrupcion del servicio en periodos no operativos del laboratorio, UTM Lab implementa un subsistema de mantenimiento:
-
-1. **Endpoint de Verificacion ([`src/app/api/cron/keep-alive/route.ts`](src/app/api/cron/keep-alive/route.ts)):** Route handler HTTP `GET` protegido mediante token Bearer. Ejecuta una transaccion SQL minima (`SELECT id FROM profiles LIMIT 1`) que reactiva el contador de actividad en el motor de almacenamiento de PostgreSQL.
-2. **Programacion de Tareas (Cron):** El archivo [`vercel.json`](vercel.json) programa la invocacion automatizada del endpoint cada 5 dias (`0 8 */5 * *`), garantizando un margen de 48 horas antes de alcanzar la ventana critica de congelamiento:
-   ```json
-   {
-     "crons": [
-       {
-         "path": "/api/cron/keep-alive",
-         "schedule": "0 8 */5 * *"
-       }
-     ]
-   }
-   ```
-3. **Mecanismo de Autenticacion del Cron:** Vercel inyecta de manera segura el encabezado `Authorization: Bearer <CRON_SECRET>`. Si el secreto recibido no coincide exactamente con el valor definido en variables de entorno, la peticion se rechaza con codigo `401 Unauthorized`.
-
-### 7.4. Validacion y Verificacion Estricta de Correos de Operadores
-
-Para mitigar el registro de cuentas fraudulentas o con direcciones de correo ficticias, el software aplica una estrategia de proteccion en dos capas:
-
-1. **Filtro de Validacion en Cliente y Dominio (`src/lib/email-validation.ts`):**
-   - **Analisis Sintactico:** Aplica validacion compatible con RFC 5322, verificando extensiones TLD legitimas de al menos dos caracteres.
-   - **Lista Negra de Proveedores Desechables:** Bloquea de forma determinista proveedores de correo temporal y buzones descartables (`mailinator`, `yopmail`, `tempmail`, `10minutemail`, `guerrillamail`, entre otros).
-   - **Bloqueo de Dominios Ficticios y Reservados:** Rechaza dominios genericos de prueba (`test.com`, `example.com`, `ficticio.com`, `asdf.com`, etc.) y patrones de usuario ficticios.
-2. **Exigencia de Activacion por Correo Real (Supabase Confirm Email):**
-   - La creacion de cuentas emite un token de confirmacion con callback seguro hacia `/auth/callback`.
-   - Se restringe el acceso al panel instrumental hasta que el usuario demuestre propiedad del buzon mediante activacion por enlace.
+Archivo de texto plano con metadatos de cabecera, sanitizacion contra inyeccion de formulas en hojas de calculo, y la matriz completa de telemetria con columnas: `sequence`, `device_time_ms`, `force_raw`, `displacement_raw`, `force_n`, `displacement_mm`, `engineering_stress_mpa`, `engineering_strain`.
 
 ---
 
-## 8. Modulo de Asistencia Tecnica con Inteligencia Artificial
+## 8. Interfaz de Usuario
 
-### 8.1. Arquitectura del Route Handler Serverless
+La plataforma cuenta con soporte de **tema dual** (modo oscuro y modo calido/claro) conmutable desde la interfaz. El panel de control principal incluye:
 
-El modulo de asistencia tecnica opera a traves de una ruta API serverless aislada en [`src/app/api/assistant/route.ts`](src/app/api/assistant/route.ts) bajo metodo `POST`.
-
-### 8.2. Validacion de Sesion y Contexto de Ensayo
-
-Para prevenir uso no autorizado y exposicion publica de la API de Google Gemini:
-
-1. **Autenticacion de Origen:** El handler verifica el token de autorizacion en el encabezado `Authorization: Bearer <token>` consultando directamente la instancia de Supabase (`supabase.auth.getUser(token)`). Las solicitudes no autenticadas son rechazadas de inmediato.
-2. **Esquema de Payload Zod:** La solicitud debe conformar de manera estricta el contrato de datos, que incluye el mensaje del usuario, historial previo y un objeto `context` compuesto por:
-   * Estado de la maquina (`machineStatus`).
-   * Ultimo mensaje de telemetria recibido por el puerto serial (`lastMessage`).
-   * Dimensiones y material de la probeta (`specimen`: ID, material, longitud inicial, area transversal).
-   * Metricas instantaneas y extremales (`telemetry`: fuerza actual/maxima, esfuerzo actual/maximo, deformacion actual/maxima, muestras adquiridas y muestras perdidas).
-3. **Contexto de Sistema Especializado:** El servidor inyecta un prompt de sistema inmutable con conocimientos metrologicos avanzados:
-   * Ley de Hooke ($\sigma = E \cdot \varepsilon$) y determinacion del Modulo de Young en el rango elastico lineal.
-   * Criterio de limite elastico convencional por metodo de offset del 0.2% de deformacion plastica.
-   * Normas internacionales de ensayo: **ASTM D638** (probetas Tipo IV y V para termoplasticos) e **ISO 527-1 / ISO 527-2**.
-   * Identificacion de anomalias en la adquisicion: deslizamiento en mordazas (caida subita de esfuerzo sin fractura visible), fluencia termoplastica y concentracion de esfuerzos.
-
-### 8.3. Aislamiento Operacional y Seguridad
-
-El modelo de lenguaje funciona de manera estrictamente consultiva y pasiva. **El asistente de IA no posee enlaces de control, funciones RPC ni capacidad para emitir tramas de comando (`CMD`) hacia el microcontrolador**. Toda modificacion de parametros fisicos, armado de ensayos y detencion de motores requiere la intervencion directa y explicita del operador humano a traves de los controles de la interfaz.
+* **Enlace serial:** Selector de baud rate, indicador de checksum CRC, boton de conexion/desconexion de puerto COM, consola de mensajes del microcontrolador y contador de paquetes perdidos.
+* **Calibracion rapida:** Boton de tara de celda de carga (puesta a cero) y mandos de ajuste manual de mordaza (JOG: -10, -1, +1, +10 mm).
+* **Parametros de probeta:** Formulario con ID, material, ancho, espesor, longitud inicial, area calculada automaticamente y perfil de calibracion.
+* **Visualizacion en tiempo real:** Curva esfuerzo vs deformacion (Recharts SVG), KPIs instantaneos (fuerza, esfuerzo, deformacion, desplazamiento) y metricas extremales.
+* **Exportacion:** Botones de descarga CSV y PDF con indicador de progreso.
+* **Asistente tecnico (YoungBot):** Chat contextualizado con conocimiento metrologico (ASTM D638, ISO 527, Ley de Hooke).
 
 ---
 
-## 9. Estructura Modular del Codigo Fuente
+## 9. Seguridad
+
+La arquitectura de seguridad se documenta en detalle en [`docs/SECURITY.md`](docs/SECURITY.md). Los controles principales son:
+
+| Capa | Control |
+| :--- | :--- |
+| Hardware (ESP32) | Aislamiento fisico de red (Air-Gap): sin WiFi ni Bluetooth. Buffer serial acotado contra desbordamiento. |
+| Canal Serial | Verificacion CRC-16/CCITT por paquete. Permissions-Policy: serial=(self). Consentimiento explicito del operador (User Gesture). |
+| Cliente Web | React escapa XSS de forma nativa. Validacion numerica estricta con `Number.isFinite()` y Zod. Datos de ensayo en RAM local. |
+| Cabeceras HTTP | CSP estricta, HSTS, X-Frame-Options: DENY, X-Content-Type-Options: nosniff, Referrer-Policy. |
+| Autenticacion | Supabase Auth con JWT. Row Level Security (RLS) en base de datos. Validacion de correo electronico. |
+| Asistencia IA | Validacion de JWT en servidor. Claves API exclusivas del entorno servidor. El asistente no puede emitir comandos al hardware. |
+
+---
+
+## 10. Estructura del Proyecto
 
 ```text
 Software/
 +-- docs/
-|   +-- SETUP.md                       Guia paso a paso de puesta en marcha
+|   +-- SECURITY.md                    Documento de arquitectura de seguridad
+|   +-- SETUP.md                       Guia de puesta en marcha
 +-- firmware/
 |   +-- utm_controller/
-|       +-- utm_controller.ino         Codigo fuente del controlador para microcontrolador
+|   |   +-- utm_controller.ino         Firmware principal del ESP32 (produccion)
+|   +-- CodigoFinal_Prueba04/
+|       +-- CodigoFinal_Prueba04.ino   Firmware sincronizado (respaldo/pruebas)
++-- scripts/
+|   +-- grafica_utm.py                 Script Python de graficacion local (legacy)
 +-- src/
 |   +-- app/
 |   |   +-- api/
 |   |   |   +-- assistant/
-|   |   |   |   +-- route.ts           Endpoint del asistente metrologico Gemini (POST)
+|   |   |   |   +-- route.ts           Endpoint del asistente metrologico (POST)
 |   |   |   +-- cron/
 |   |   |       +-- keep-alive/
-|   |   |           +-- route.ts       Endpoint de mantenimiento de actividad Supabase (GET)
+|   |   |           +-- route.ts       Endpoint de mantenimiento Supabase (GET)
 |   |   +-- auth/
 |   |   |   +-- callback/
 |   |   |       +-- page.tsx           Manejador del ciclo de retorno de autenticacion
 |   |   +-- dashboard/
-|   |   |   +-- page.tsx               Panel de control instrumental y graficado en vivo
-|   |   +-- globals.css                Definicion de directivas Tailwind y temas visuales
-|   |   +-- layout.tsx                 Layout raiz del arbol de componentes
-|   |   +-- page.tsx                   Pantalla de acceso y autenticacion de operadores
+|   |   |   +-- page.tsx               Panel de control, graficado y exportacion
+|   |   +-- globals.css                Directivas Tailwind y definicion de temas
+|   |   +-- layout.tsx                 Layout raiz con ThemeProvider
+|   |   +-- page.tsx                   Pantalla de acceso y autenticacion
+|   +-- components/
+|   |   +-- theme-toggle.tsx           Control de alternancia de tema visual
+|   |   +-- utm-logo.tsx               Componente del logotipo institucional
 |   +-- hooks/
-|   |   +-- use-serial-test-session.ts Hook de gestion del puerto serie, tramas y CRC
+|   |   +-- use-serial-test-session.ts Hook de comunicacion serial, tramas y CRC
 |   +-- lib/
 |   |   +-- csv.ts                     Generacion y sanitizacion de archivos CSV
-|   |   +-- email-validation.ts        Validacion y descarte de correos ficticios/desechables
-|   |   +-- pdf-report.ts              Compilacion de reportes PDF y rasterizacion grafica
-|   |   +-- supabase.ts                Instancia cliente de Supabase (singleton)
-|   |   +-- test-domain.ts             Validacion de esquemas Zod, calculos y tipos
+|   |   +-- email-validation.ts        Validacion de correos ficticios/desechables
+|   |   +-- logo-base64.ts             Logo codificado para insercion en PDF
+|   |   +-- pdf-report.ts             Generacion de reporte PDF con grafica y Young
+|   |   +-- supabase.ts                Cliente singleton de Supabase
+|   |   +-- test-domain.ts             Esquemas Zod, calculos y tipos del dominio
+|   |   +-- theme-context.tsx           Contexto React para gestion de tema visual
 |   +-- types/
-|       +-- web-serial.d.ts            Definiciones de tipos TypeScript para Web Serial API
+|       +-- web-serial.d.ts            Tipos TypeScript para Web Serial API
 +-- supabase/
 |   +-- migrations/
-|       +-- 202609180001_initial.sql   Script DDL inicial (tablas, politicas RLS y trigger)
-+-- .env.example                       Plantilla formal de variables de configuracion
-+-- eslint.config.mjs                  Configuracion de analisis estatico de codigo
-+-- next.config.ts                     Configuracion del compilador Next.js y cabeceras HTTP
-+-- package.json                       Definicion de dependencias y scripts de ejecucion
-+-- tailwind.config.ts                 Configuracion de diseno y componentes visuales
+|       +-- 202609180001_initial.sql   Script DDL (tablas, RLS, trigger)
++-- public/
+|   +-- logo.png                       Logotipo principal
+|   +-- logo.svg                       Logotipo vectorial
+|   +-- logo-white.png                 Logotipo para fondos oscuros
+|   +-- logo-accent.png                Logotipo con acento de color
++-- .env.example                       Plantilla de variables de configuracion
++-- eslint.config.mjs                  Configuracion de analisis estatico
++-- next.config.ts                     Configuracion Next.js y cabeceras HTTP
++-- package.json                       Dependencias y scripts
++-- tailwind.config.ts                 Configuracion de diseno visual
 +-- tsconfig.json                      Parametros del compilador TypeScript
-+-- vercel.json                        Definicion de tareas programadas (Crons)
++-- vercel.json                        Tareas programadas (Crons)
 ```
 
 ---
 
-## 10. Requisitos de Entorno y Permisos del Navegador
+## 11. Requisitos de Entorno
 
-### 10.1. Requisitos de Ejecucion
+### 11.1. Requisitos de Ejecucion
 
-* **Entorno Node.js:** Version 20.x LTS o superior.
-* **Gestor de paquetes:** npm 10.x o superior.
-* **Navegador del Operador:** Google Chrome (version 89+) o Microsoft Edge (version 89+). Los navegadores Mozilla Firefox, Apple Safari y variantes en sistemas operativos moviles no implementan la Web Serial API y no son compatibles.
+* **Node.js:** Version 20.x LTS o superior
+* **npm:** Version 10.x o superior
+* **Navegador:** Google Chrome 89+ o Microsoft Edge 89+ (soporte obligatorio de Web Serial API)
+* **Arduino IDE:** Version 2.x para compilacion y carga del firmware
+* **Placa ESP32:** Paquete de soporte `esp32` de Espressif en el Board Manager
 
-### 10.2. Contexto de Seguridad Criptografica (HTTPS) y Permisos
+### 11.2. Librerias del Firmware
 
-Por especificacion formal del consorcio W3C, la Web Serial API unicamente puede ejecutarse dentro de un **Contexto Seguro (Secure Context)**:
+* `AccelStepper` -- Control de motor paso a paso con aceleracion
+* `HX711` -- Interfaz con el convertidor analogico-digital de la celda de carga
 
-1. **Entorno local:** `http://localhost` o `http://127.0.0.1`.
-2. **Entorno de produccion:** Requiere de forma obligatoria conexion cifrada bajo protocolo TLS/HTTPS con certificado valido.
-3. **Cabecera de Politica de Permisos:** El archivo [`next.config.ts`](next.config.ts) declara de manera explicita la directiva HTTP necesaria para autorizar al navegador a solicitar interfaces serie:
-   ```typescript
-   headers: async () => [
-     {
-       source: "/(.*)",
-       headers: [
-         {
-           key: "Permissions-Policy",
-           value: "serial=(self)"
-         }
-       ]
-     }
-   ]
-   ```
+### 11.3. Contexto de Seguridad del Navegador
+
+La Web Serial API requiere un Contexto Seguro (Secure Context):
+* **Local:** `http://localhost` o `http://127.0.0.1`
+* **Produccion:** Conexion HTTPS con certificado valido (proporcionado automaticamente por Vercel)
 
 ---
 
-## 11. Procedimiento de Instalacion, Compilacion y Despliegue
+## 12. Instalacion y Despliegue
 
-### 11.1. Configuracion de Variables de Entorno
+### 12.1. Variables de Entorno
 
-Crear el archivo `.env.local` en el directorio raiz del software a partir del archivo `.env.example`:
+Crear `.env.local` a partir de `.env.example`:
 
 ```bash
 cp .env.example .env.local
 ```
 
-Especificar los parametros de configuracion:
+Variables requeridas:
 
 ```dotenv
-# Parametros publicos de Supabase (expuestos al cliente de autenticacion)
-NEXT_PUBLIC_SUPABASE_URL=https://<identificador-proyecto>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<clave-publica-anonima-supabase>
-
-# Clave de servicio para tareas administrativas (servidor unicamente)
+NEXT_PUBLIC_SUPABASE_URL=https://<proyecto>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<clave-publica-anonima>
 SUPABASE_SERVICE_ROLE_KEY=<clave-secreta-service-role>
-
-# Clave secreta para autorizacion de llamadas cron
-CRON_SECRET=<cadena-aleatoria-de-autenticacion-sha256>
-
-# Parametros privados de servidor para inferencia con IA
+CRON_SECRET=<cadena-aleatoria-sha256>
 GEMINI_API_KEY=<clave-api-google-ai-studio>
-GEMINI_MODEL=gemini-1.5-flash
+GEMINI_MODEL=gemini-2.5-flash
 ```
 
-### 11.2. Scripts del Ciclo de Desarrollo
-
-En la terminal, dentro del directorio del software:
+### 12.2. Desarrollo Local
 
 ```bash
-# Instalacion de dependencias declaradas
 npm install
-
-# Inicio del servidor de desarrollo local (puerto 3000)
-npm run dev
-
-# Verificacion estricta de tipos TypeScript sin emision de codigo
-npm run typecheck
-
-# Analisis estatico de sintaxis y reglas de diseno mediante ESLint
-npm run lint
-
-# Compilacion optimizada para produccion
-npm run build
-
-# Ejecucion del servidor de produccion compilado
-npm run start
+npm run dev        # Servidor de desarrollo en puerto 3000
+npm run typecheck  # Verificacion de tipos TypeScript
+npm run lint       # Analisis estatico ESLint
+npm run build      # Compilacion optimizada para produccion
+npm run start      # Servidor de produccion
 ```
 
-### 11.3. Despliegue en Infraestructura Serverless (Vercel)
+### 12.3. Carga del Firmware
 
-1. Vincular el repositorio del proyecto en el panel de control de Vercel.
-2. Si el codigo del software reside en un subdirectorio del repositorio, configurar la opcion **Root Directory** con el valor correspondiente (`Software`).
-3. Registrar las variables de entorno detalladas en el apartado 11.1 dentro de **Settings -> Environment Variables**.
-4. Ejecutar el despliegue (**Deploy**).
-5. Verificar en el panel de **Settings -> Crons** que el trabajo `/api/cron/keep-alive` se encuentre registrado con la frecuencia correspondiente (`0 8 */5 * *`).
-6. Configurar en el panel de Supabase (**Authentication -> URL Configuration**) la URL canonica asignada por Vercel (por ejemplo, `https://utm-lab.vercel.app`) y la ruta de retorno `https://utm-lab.vercel.app/auth/callback`.
+1. Abrir `firmware/utm_controller/utm_controller.ino` en Arduino IDE.
+2. Seleccionar placa **ESP32 Dev Module** y el puerto COM correspondiente.
+3. Verificar la configuracion de microstepping del DRV8825 (jumpers MS1/MS2/MS3 para 1/8).
+4. Compilar y cargar al ESP32.
+
+### 12.4. Despliegue en Vercel
+
+1. Vincular el repositorio en Vercel.
+2. Configurar **Root Directory** como `Software` si el codigo reside en un subdirectorio.
+3. Registrar las variables de entorno en **Settings > Environment Variables**.
+4. Ejecutar el despliegue.
+5. Verificar que el cron `/api/cron/keep-alive` este registrado (`0 8 */5 * *`).
+6. Configurar en Supabase la URL canonica de Vercel y la ruta de callback (`/auth/callback`).
+
+---
+
+## 13. Normativa de Referencia
+
+* **ASTM D638** -- Standard Test Method for Tensile Properties of Plastics
+* **ISO 527-1 / ISO 527-2** -- Plastics: Determination of Tensile Properties
+* **ISO 80000-3** -- Quantities and Units: Space and Time (aceleracion estandar de gravedad)
+
+---
+
+## 14. Licencia y Creditos
+
+Proyecto academico desarrollado en la Facultad de Ciencias de la Universidad Nacional de Ingenieria (FC-UNI) como parte del curso de Instrumentacion.
