@@ -82,6 +82,22 @@ export function generateTestPdf(
     if (s.strain > maxStrain) maxStrain = s.strain;
   }
 
+  // Estimación del Módulo de Elasticidad (Young) en zona lineal inicial
+  let elasticModulusMpa = 0;
+  if (samples.length >= 6) {
+    const maxIdx = samples.findIndex((s) => s.stressMpa === maxStress);
+    const subIdx = maxIdx > 5 ? maxIdx : samples.length;
+    const p1 = samples[Math.max(1, Math.floor(subIdx * 0.15))];
+    const p2 = samples[Math.max(2, Math.floor(subIdx * 0.45))];
+    if (p1 && p2 && p2.strain > p1.strain) {
+      const dStrain = p2.strain - p1.strain;
+      const dStress = p2.stressMpa - p1.stressMpa;
+      if (dStrain > 0.0002 && dStress > 0) {
+        elasticModulusMpa = dStress / dStrain;
+      }
+    }
+  }
+
   // ENCABEZADO
   doc.setFillColor(8, 18, 29);
   doc.rect(0, 0, pageWidth, 28, "F");
@@ -96,14 +112,17 @@ export function generateTestPdf(
   const textStartX = margin + 24;
 
   doc.setTextColor(125, 211, 252); // Cyan
-  doc.setFontSize(14);
+  doc.setFontSize(13);
   doc.setFont("helvetica", "bold");
-  doc.text("UTMachine LAB · REPORTE DE ENSAYO DE TRACCIÓN", textStartX, 12);
+  doc.text("UTMachine LAB · REPORTE METROLÓGICO DE TRACCIÓN", textStartX, 11);
 
   doc.setTextColor(166, 189, 203);
-  doc.setFontSize(9);
+  doc.setFontSize(8.5);
   doc.setFont("helvetica", "normal");
-  doc.text("Máquina Universal de Ensayos Low-Cost · Instrumentación Trazable", textStartX, 18);
+  doc.text("Máquina Universal de Ensayos Low-Cost · Instrumentación Trazable", textStartX, 16.5);
+  doc.setFontSize(7.5);
+  doc.setTextColor(125, 211, 252);
+  doc.text("Normativa de Referencia: ASTM D638 / ISO 527 (Ensayos de Tracción en Polímeros)", textStartX, 22);
 
   const now = new Date();
   const dateStr = now.toLocaleDateString("es-ES", {
@@ -113,7 +132,9 @@ export function generateTestPdf(
     hour: "2-digit",
     minute: "2-digit"
   });
-  doc.text(`Fecha: ${dateStr}`, pageWidth - margin, 18, { align: "right" });
+  doc.setFontSize(8);
+  doc.setTextColor(166, 189, 203);
+  doc.text(`Fecha: ${dateStr}`, pageWidth - margin, 16.5, { align: "right" });
 
   let y = 36;
 
@@ -187,44 +208,57 @@ export function generateTestPdf(
   doc.text("2. PROPIEDADES MECÁNICAS CALCULADAS", margin + 3, y + 5);
 
   y += 11;
-  const cardW = (contentWidth - 6) / 3;
+  const cardSpacing = 2.5;
+  const cardW = (contentWidth - cardSpacing * 3) / 4;
 
   // Tarjeta 1: Fuerza Máxima
   doc.setFillColor(248, 250, 252);
   doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(margin, y, cardW, 18, 2, 2, "FD");
-  doc.setFontSize(8);
+  doc.roundedRect(margin, y, cardW, 18, 1.5, 1.5, "FD");
+  doc.setFontSize(7.5);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100, 116, 139);
-  doc.text("Fuerza Máxima (F_max)", margin + 3, y + 5);
-  doc.setFontSize(13);
+  doc.text("Fuerza Máx. (F_max)", margin + 2.5, y + 5);
+  doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(15, 23, 42);
-  doc.text(`${maxForce.toFixed(2)} N`, margin + 3, y + 13);
+  doc.text(`${maxForce.toFixed(2)} N`, margin + 2.5, y + 13);
 
-  // Tarjeta 2: Esfuerzo Máximo (Resistencia)
-  const card2X = margin + cardW + 3;
-  doc.roundedRect(card2X, y, cardW, 18, 2, 2, "FD");
-  doc.setFontSize(8);
+  // Tarjeta 2: Esfuerzo Máximo (Resistencia a Tracción)
+  const card2X = margin + cardW + cardSpacing;
+  doc.roundedRect(card2X, y, cardW, 18, 1.5, 1.5, "FD");
+  doc.setFontSize(7.5);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100, 116, 139);
-  doc.text("Esfuerzo Máximo (σ_max)", card2X + 3, y + 5);
-  doc.setFontSize(13);
+  doc.text("Esfuerzo Máx. (σ_max)", card2X + 2.5, y + 5);
+  doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(14, 116, 144);
-  doc.text(`${maxStress.toFixed(3)} MPa`, card2X + 3, y + 13);
+  doc.text(`${maxStress.toFixed(3)} MPa`, card2X + 2.5, y + 13);
 
-  // Tarjeta 3: Deformación en Rotura / Máxima
-  const card3X = card2X + cardW + 3;
-  doc.roundedRect(card3X, y, cardW, 18, 2, 2, "FD");
-  doc.setFontSize(8);
+  // Tarjeta 3: Deformación a Carga Máxima
+  const card3X = card2X + cardW + cardSpacing;
+  doc.roundedRect(card3X, y, cardW, 18, 1.5, 1.5, "FD");
+  doc.setFontSize(7.5);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100, 116, 139);
-  doc.text("Deformación Máxima (ε_max)", card3X + 3, y + 5);
-  doc.setFontSize(13);
+  doc.text("Deformación (ε_max)", card3X + 2.5, y + 5);
+  doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(15, 23, 42);
-  doc.text(`${(maxStrain * 100).toFixed(2)} %`, card3X + 3, y + 13);
+  doc.text(`${(maxStrain * 100).toFixed(2)} %`, card3X + 2.5, y + 13);
+
+  // Tarjeta 4: Módulo Elástico Estimado (E)
+  const card4X = card3X + cardW + cardSpacing;
+  doc.roundedRect(card4X, y, cardW, 18, 1.5, 1.5, "FD");
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100, 116, 139);
+  doc.text("Mód. Young (E est.)", card4X + 2.5, y + 5);
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(14, 116, 144);
+  doc.text(elasticModulusMpa > 0 ? `${elasticModulusMpa.toFixed(1)} MPa` : "N/D", card4X + 2.5, y + 13);
 
   y += 24;
 
@@ -239,8 +273,11 @@ export function generateTestPdf(
   y += 10;
 
   if (chartPngDataUrl) {
-    const chartHeight = 85;
+    const chartHeight = 82;
     doc.addImage(chartPngDataUrl, "PNG", margin, y, contentWidth, chartHeight);
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.3);
+    doc.rect(margin, y, contentWidth, chartHeight, "S");
     y += chartHeight + 4;
   } else {
     doc.setDrawColor(203, 213, 225);
@@ -304,13 +341,13 @@ export function generateTestPdf(
 
   doc.setFontSize(7.5);
   doc.setFont("helvetica", "normal");
-  doc.setTextColor(148, 163, 184);
+  doc.setTextColor(100, 116, 139);
   doc.text(
-    "Reporte generado localmente en el navegador. Los datos no se transmitieron a la nube para preservar cuota.",
+    "Documento técnico de certificación experimental generado por UTMachine Lab (FC-UNI). Registro trazable.",
     margin,
     285
   );
-  doc.text("Página 1 de 1", pageWidth - margin, 285, { align: "right" });
+  doc.text("Página 1 de 1 · Certificado Metrológico Digital", pageWidth - margin, 285, { align: "right" });
 
   // Guardar archivo
   const safeId = setup.specimenId.replace(/[^a-zA-Z0-9_-]/g, "_") || "sin_id";
