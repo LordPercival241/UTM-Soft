@@ -19,6 +19,7 @@ import {
   Minimize2,
   Play,
   RotateCcw,
+  Scale,
   Send,
   ShieldAlert,
   ShieldCheck,
@@ -507,6 +508,55 @@ export default function DashboardPage() {
                     <WifiOff size={15} />
                     <span>DESCONECTAR PUERTO</span>
                   </button>
+                )}
+
+                {serial.status !== "disconnected" && (
+                  <div className="pt-2 border-t border-theme-border flex flex-col gap-2 mt-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-mono text-theme-muted font-semibold">CALIBRACIÓN RÁPIDA</span>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await serial.tare();
+                            setNotice({ text: "Celda de carga tarada exitosamente a 0.00 N.", type: "success" });
+                          } catch (err) {
+                            setNotice({ text: err instanceof Error ? err.message : "Error al solicitar tara.", type: "error" });
+                          }
+                        }}
+                        disabled={serial.status === "running" || serial.status === "arming"}
+                        className="py-1 px-2.5 bg-theme-canvas hover:bg-theme-border/60 border border-theme-border text-theme-accent font-mono text-[11px] font-bold rounded-sm flex items-center gap-1.5 transition-colors disabled:opacity-40"
+                        title="Poner a cero la lectura de la celda de carga"
+                      >
+                        <Scale size={12} />
+                        <span>TARAR (0 N)</span>
+                      </button>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] text-theme-muted block mb-1">AJUSTE MANUAL DE MORDAZA (JOG)</label>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {[-10, -1, 1, 10].map((dist) => (
+                          <button
+                            key={dist}
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                await serial.jog(dist);
+                                setNotice({ text: `Desplazando actuador ${dist > 0 ? "+" : ""}${dist} mm...`, type: "info" });
+                              } catch (err) {
+                                setNotice({ text: err instanceof Error ? err.message : "Error al desplazar actuador.", type: "error" });
+                              }
+                            }}
+                            disabled={serial.status === "running" || serial.status === "arming"}
+                            className="py-1 px-1.5 bg-theme-canvas hover:bg-theme-border/60 border border-theme-border text-theme-main font-mono text-[11px] font-semibold rounded-sm text-center transition-colors disabled:opacity-40"
+                          >
+                            {dist > 0 ? `+${dist}` : dist} mm
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 )}
 
                 {/* Consola de estado del microcontrolador */}
