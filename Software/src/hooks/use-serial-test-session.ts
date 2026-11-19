@@ -56,7 +56,7 @@ export function useSerialTestSession() {
     pendingRef.current.clear();
   }, []);
 
-  const send = useCallback(async (type: string, payload: Record<string, string | number> = {}) => {
+  const send = useCallback(async (type: string, payload: Record<string, string | number> = {}, timeoutMs = 3000) => {
     const port = portRef.current;
     if (!port?.writable) throw new Error("El controlador no está disponible.");
     const id = crypto.randomUUID();
@@ -73,7 +73,7 @@ export function useSerialTestSession() {
       const timeout = setTimeout(() => {
         pendingRef.current.delete(id);
         reject(new Error(`El controlador no confirmó ${type} dentro del tiempo permitido.`));
-      }, 3000);
+      }, timeoutMs);
       pendingRef.current.set(id, { resolve, reject, timeout });
     });
   }, []);
@@ -85,13 +85,25 @@ export function useSerialTestSession() {
     try {
       if (line.startsWith("ACK,")) {
         const fields = parseFields(line);
-        const pending = pendingRef.current.get(fields.id);
-        if (!pending) return;
-        clearTimeout(pending.timeout);
-        pendingRef.current.delete(fields.id);
-        if (fields.status === "OK") pending.resolve();
-        else pending.reject(new Error(fields.reason || "El controlador rechazó el comando."));
-        return;
+        if (fields.id && pendingRef.current.has(fields.id)) {
+          const pending = pendingRef.current.get(fields.id)!;
+          clearTimeout(pending.timeout);
+          pendingRef.current.delete(fields.id);
+          if (fields.status === "OK") pending.resolve();
+          else pending.reject(new Error(fields.reason || "El controlador rechazó el comando."));
+          return;
+        }
+        // Fallback para confirmaciones globales
+        if (fields.status === "OK" && pendingRef.current.size > 0) {
+          const firstKey = pendingRef.current.keys().next().value;
+          if (firstKey) {
+            const pending = pendingRef.current.get(firstKey)!;
+            clearTimeout(pending.timeout);
+            pendingRef.current.delete(firstKey);
+            pending.resolve();
+          }
+          return;
+        }
       }
       if (line.startsWith("EVENT,")) {
         const fields = parseFields(line);
@@ -171,10 +183,35 @@ export function useSerialTestSession() {
       const port = await navigator.serial.requestPort();
       await port.open({ baudRate });
       portRef.current = port;
-      setLastMessage("Puerto abierto. Verificando protocolo con el controlador.");
+      setLastMessage("Puerto abierto. Sincronizando con el microcontrolador...");
       void readPort(port);
-      await send("HELLO");
+
+      // Breve pausa para estabilización de hardware tras el reset inducido por DTR
+      await new Promise((resolve) => setTimeout(resolve, 800));
+
+      // Intento de sincronización HELLO con hasta 3 reintentos automáticos
+      let synchronized = false;
+      let lastErr: Error | null = null;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          await send("HELLO", {}, 2500);
+          synchronized = true;
+          break;
+        } catch (err) {
+          lastErr = err instanceof Error ? err : new Error(String(err));
+          if (attempt < 3) {
+            setLastMessage(`Sincronizando controlador (intento ${attempt + 1}/3)...`);
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          }
+        }
+      }
+
+      if (!synchronized) {
+        throw lastErr || new Error("El controlador no confirmó HELLO dentro del tiempo permitido.");
+      }
+
       setStatus("ready");
+      setLastMessage("Microcontrolador sincronizado y listo para ensayar.");
     } catch (caught) {
       try { await portRef.current?.close(); } catch { /* port can already be closed */ }
       portRef.current = null;
