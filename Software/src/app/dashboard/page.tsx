@@ -510,54 +510,62 @@ export default function DashboardPage() {
                   </button>
                 )}
 
-                {serial.status !== "disconnected" && (
-                  <div className="pt-2 border-t border-theme-border flex flex-col gap-2 mt-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-mono text-theme-muted font-semibold">CALIBRACIÓN RÁPIDA</span>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            await serial.tare();
-                            setNotice({ text: "Celda de carga tarada exitosamente a 0.00 N.", type: "success" });
-                          } catch (err) {
-                            setNotice({ text: err instanceof Error ? err.message : "Error al solicitar tara.", type: "error" });
-                          }
-                        }}
-                        disabled={serial.status === "running" || serial.status === "arming"}
-                        className="py-1 px-2.5 bg-theme-canvas hover:bg-theme-border/60 border border-theme-border text-theme-accent font-mono text-[11px] font-bold rounded-sm flex items-center gap-1.5 transition-colors disabled:opacity-40"
-                        title="Poner a cero la lectura de la celda de carga"
-                      >
-                        <Scale size={12} />
-                        <span>TARAR (0 N)</span>
-                      </button>
-                    </div>
+                {/* Mandos de Calibración Rápida y Posicionamiento */}
+                <div className="pt-2 border-t border-theme-border flex flex-col gap-2 mt-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-mono text-theme-muted font-semibold flex items-center gap-1">
+                      <Scale size={13} className="text-theme-accent" />
+                      <span>CALIBRACIÓN RÁPIDA</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await serial.tare();
+                          setNotice({ text: "Celda de carga tarada exitosamente a 0.00 N.", type: "success" });
+                        } catch (err) {
+                          setNotice({ text: err instanceof Error ? err.message : "Error al solicitar tara.", type: "error" });
+                        }
+                      }}
+                      disabled={serial.status !== "ready" && serial.status !== "stopped"}
+                      className="py-1 px-2.5 bg-theme-canvas hover:bg-theme-border/60 border border-theme-border text-theme-accent font-mono text-[11px] font-bold rounded-sm flex items-center gap-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      title={serial.status !== "ready" && serial.status !== "stopped" ? "Conecte el puerto COM para tarar" : "Poner a cero la lectura de la celda de carga"}
+                    >
+                      <RotateCcw size={12} />
+                      <span>TARAR (0 N)</span>
+                    </button>
+                  </div>
 
-                    <div>
-                      <label className="text-[10px] text-theme-muted block mb-1">AJUSTE MANUAL DE MORDAZA (JOG)</label>
-                      <div className="grid grid-cols-4 gap-1.5">
-                        {[-10, -1, 1, 10].map((dist) => (
-                          <button
-                            key={dist}
-                            type="button"
-                            onClick={async () => {
-                              try {
-                                await serial.jog(dist);
-                                setNotice({ text: `Desplazando actuador ${dist > 0 ? "+" : ""}${dist} mm...`, type: "info" });
-                              } catch (err) {
-                                setNotice({ text: err instanceof Error ? err.message : "Error al desplazar actuador.", type: "error" });
-                              }
-                            }}
-                            disabled={serial.status === "running" || serial.status === "arming"}
-                            className="py-1 px-1.5 bg-theme-canvas hover:bg-theme-border/60 border border-theme-border text-theme-main font-mono text-[11px] font-semibold rounded-sm text-center transition-colors disabled:opacity-40"
-                          >
-                            {dist > 0 ? `+${dist}` : dist} mm
-                          </button>
-                        ))}
-                      </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[10px] text-theme-muted block font-mono">AJUSTE MANUAL DE MORDAZA (JOG)</label>
+                      {serial.status !== "ready" && serial.status !== "stopped" && (
+                        <span className="text-[9px] text-amber-500/80 font-mono">Requiere conexión</span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {[-10, -1, 1, 10].map((dist) => (
+                        <button
+                          key={dist}
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              await serial.jog(dist);
+                              setNotice({ text: `Desplazando actuador ${dist > 0 ? "+" : ""}${dist} mm...`, type: "info" });
+                            } catch (err) {
+                              setNotice({ text: err instanceof Error ? err.message : "Error al desplazar actuador.", type: "error" });
+                            }
+                          }}
+                          disabled={serial.status !== "ready" && serial.status !== "stopped"}
+                          className="py-1 px-1.5 bg-theme-canvas hover:bg-theme-border/60 border border-theme-border text-theme-main font-mono text-[11px] font-semibold rounded-sm text-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          title={dist > 0 ? `Avanzar +${dist} mm` : `Retroceder ${dist} mm`}
+                        >
+                          {dist > 0 ? `+${dist}` : dist} mm
+                        </button>
+                      ))}
                     </div>
                   </div>
-                )}
+                </div>
 
                 {/* Consola de estado del microcontrolador */}
                 <div className="bg-theme-canvas border border-theme-border p-2 rounded-sm text-[11px] font-mono mt-1">
@@ -680,6 +688,24 @@ export default function DashboardPage() {
             {/* Mandos de Control Físico */}
             <div className="pt-2 border-t border-theme-border space-y-2 mt-1">
               <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await serial.tare();
+                    setNotice({ text: "Celda de carga tarada exitosamente a 0.00 N.", type: "success" });
+                  } catch (err) {
+                    setNotice({ text: err instanceof Error ? err.message : "Error al solicitar tara.", type: "error" });
+                  }
+                }}
+                disabled={serial.status !== "ready" && serial.status !== "stopped"}
+                className="w-full py-1.5 px-3 rounded-sm bg-theme-cardInner hover:bg-theme-border/60 border border-theme-border text-theme-accent font-mono text-[11px] font-bold flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                title="Poner a cero la lectura de la celda de carga antes del ensayo"
+              >
+                <RotateCcw size={13} />
+                <span>TARAR CELDA (0.00 N)</span>
+              </button>
+
+              <button
                 type="submit"
                 disabled={serial.status !== "ready" && serial.status !== "stopped"}
                 className="w-full py-2.5 px-4 rounded-sm bg-theme-accent hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center gap-2 font-mono text-xs uppercase font-bold transition-opacity"
@@ -687,6 +713,12 @@ export default function DashboardPage() {
                 <Play size={16} className="fill-current" />
                 <span>INICIAR ENSAYO MECÁNICO</span>
               </button>
+
+              {serial.status !== "ready" && serial.status !== "stopped" && (
+                <p className="text-[10px] font-mono text-amber-500/90 text-center">
+                  * Seleccione y conecte el puerto COM en el panel superior para habilitar el inicio.
+                </p>
+              )}
 
               <button
                 type="button"

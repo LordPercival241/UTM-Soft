@@ -152,11 +152,11 @@ void TareaCeldaCarga(void * pvParameters) {
 }
 
 // =========================================================================
-// SETUP (NÚCLEO 1): INICIALIZACIÓN NO BLOQUEANTE
+// SETUP (NÚCLEO 1): ARRANQUE RÁPIDO Y NO BLOQUEANTE
 // =========================================================================
 void setup() {
   Serial.begin(115200);
-  delay(1000);  
+  delay(200); // Retardo breve para inicialización de hardware sin demoras
 
   pinMode(BOTON_CERO, INPUT_PULLUP);
   pinMode(BOTON_LIMITE, INPUT_PULLUP);
@@ -165,17 +165,7 @@ void setup() {
   stepper.setAcceleration(aceleracion);
   stepper.setMaxSpeed(velocidadPasos);
 
-  Serial.println("\n============================================");
-  Serial.println("  UTMachine Lab - Firmware v4.0 Multiplataforma");
-  Serial.println("============================================");
-
   balanza.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
-
-  if (!balanza.wait_ready_timeout(2500)) {
-    Serial.println("ERROR: HX711 no detectado. Verifique conexion en pines 15 y 2.");
-  } else {
-    Serial.println("HX711 listo.");
-  }
 
   // Tarea en Núcleo 0 para adquisición ininterrumpida de carga
   xTaskCreatePinnedToCore(
@@ -188,8 +178,7 @@ void setup() {
     0                  
   );
 
-  Serial.println("Controlador listo.");
-  Serial.println("Compatible con Plataforma Web y Script Python.");
+  Serial.println("ACK,status=OK,firmware=UTMachine_v4.0");
 }
 
 // =========================================================================
@@ -373,6 +362,12 @@ void procesarLineaComando(String linea) {
   // Si proviene de la plataforma web
   if (linea.startsWith("CMD,")) {
     procesarComandoWeb(linea);
+    return;
+  }
+
+  // Si la línea contiene HELLO de forma directa
+  if (linea.indexOf("HELLO") != -1) {
+    Serial.println("ACK,status=OK,firmware=UTMachine_v4.0");
     return;
   }
 
